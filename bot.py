@@ -305,15 +305,65 @@ _RESPOSTAS_SEED = {
         "umbra": ["...bom dia... ou seria 'boa noite disfarçada de dia'?? 🌑", "...a manhã chegou, mas as sombras nunca dormem... bom dia... 🌑🐉"],
         "luxor": ["bom dia!! que a luz do sol encha seu dia de coisas boas!! ✨", "bom dia, viajante!! hoje é um novo começo!! ✨🐉"],
     },
+    "boa tarde": {
+        "ignis": ["BOA TARDE!! o sol lá em cima e eu aqui embaixo, os dois pegando fogo!! 🔥🐉", "boa tarde!! metade do dia já queimou, bora aproveitar o resto!! 🔥"],
+        "umbra": ["...boa tarde... a luz forte lá fora não chega até onde eu fico... 🌑", "...tarde... um bom momento pra sombras curtas e pensamentos longos... 🌑🐉"],
+        "luxor": ["boa tarde!! espero que seu dia esteja sendo leve até agora!! ✨🐉", "boa tarde, viajante!! ainda dá tempo de fazer esse dia valer a pena!! ✨"],
+    },
     "boa noite": {
         "ignis": ["boa noite!! descansa, amanhã tem mais fogo pra queimar!! 🔥", "boa noite!! nem à noite eu apago completamente, hehe!! 🔥🐉"],
         "umbra": ["...boa noite... a escuridão cuida de você enquanto dorme... 🌑", "...finalmente, a noite é minha hora... durma bem... 🌑🐉"],
         "luxor": ["boa noite!! que seus sonhos sejam leves e cheios de luz!! ✨", "descanse bem, viajante!! amanhã brilharemos juntos de novo!! ✨🐉"],
     },
+    "oi": {
+        "ignis": ["OI!! chegou bem na hora, eu tava quase pegando fogo de tédio!! 🔥🐉", "oi oi!! fala logo o que você quer, mortal!! 🔥"],
+        "umbra": ["...oi... eu senti você chegando antes mesmo de você falar... 🌑🐉", "...oi... as sombras notaram sua presença... 🌑"],
+        "luxor": ["oi!! que bom te ver por aqui!! ✨🐉", "oiii!! senti sua energia chegando, seja bem-vindo(a)!! ✨"],
+    },
+    "olá": {
+        "ignis": ["OLÁ?? que formalidade é essa, hein!! fala direito comigo!! 🔥😤", "olá!! (ainda vou te fazer gritar comigo, tipo eu, mas beleza)!! 🔥🐉"],
+        "umbra": ["...olá... uma saudação educada... rara por aqui... 🌑", "...olá, viajante... o que trouxe você às minhas sombras?? 🌑🐉"],
+        "luxor": ["olá!! seja muito bem-vindo(a)!! ✨🐉", "olá, viajante!! que bom ter você aqui!! ✨"],
+    },
+    "e ai": {
+        "ignis": ["E AÍ!! bora agitar essa energia por aqui!! 🔥🐉", "e aí, mortal!! chegou pra ver o show ou pra participar dele?? 🔥"],
+        "umbra": ["...e aí... eu já esperava por essa pergunta... 🌑🐉", "...e aí... as sombras estão tranquilas, e você?? 🌑"],
+        "luxor": ["e aí!! tudo em paz por aqui, e com você?? ✨🐉", "e aí, viajante!! como posso ajudar hoje?? ✨"],
+    },
+    "tudo bem": {
+        "ignis": ["tudo em CHAMAS, do jeito que eu gosto!! e você, tá pegando fogo também?? 🔥🐉", "tudo bem sim, ou melhor, tudo QUENTE!! e contigo?? 🔥"],
+        "umbra": ["...tudo bem, dentro do que a escuridão permite... e você... como está?? 🌑🐉", "...vou levando, entre uma sombra e outra... e você?? 🌑"],
+        "luxor": ["tudo ótimo por aqui, obrigado por perguntar!! e você, como está?? ✨🐉", "tudo bem sim!! e com você, tá tudo em ordem?? ✨"],
+    },
+    "como você está": {
+        "ignis": ["EU?? pegando fogo de energia, como sempre!! e você, aguenta o meu ritmo?? 🔥🐉", "tô bem, tô sempre pronto pra queimar alguma coisa!! e você, como anda?? 🔥"],
+        "umbra": ["...eu estou... como sempre estou... entre sombras e silêncio... e você?? 🌑🐉", "...bem, dentro do possível... obrigado por perguntar... como você está?? 🌑"],
+        "luxor": ["estou muito bem, brilhando forte hoje!! e você, como está se sentindo?? ✨🐉", "tô ótimo(a), obrigado por perguntar!! e você, tudo em paz?? ✨"],
+    },
+    "como vai": {
+        "ignis": ["vou queimando tudo pela frente, como sempre!! e você, como anda?? 🔥🐉", "vou bem, sempre pronto pra uma boa confusão!! e aí, como vai você?? 🔥"],
+        "umbra": ["...vou... nas sombras, como sempre... e você, como vai?? 🌑🐉", "...as coisas seguem seu curso silencioso por aqui... e com você?? 🌑"],
+        "luxor": ["vou muito bem, obrigado por perguntar!! e você, como vai?? ✨🐉", "tudo caminhando com leveza por aqui!! e você, tudo bem?? ✨"],
+    },
+    "salve": {
+        "ignis": ["SALVE!! chegou o momento de agitar esse lugar!! 🔥🐉", "salve, mortal!! que fogo te trouxe até aqui hoje?? 🔥"],
+        "umbra": ["...salve... uma saudação antiga... eu gosto disso... 🌑🐉", "...salve, viajante... as sombras registraram sua chegada... 🌑"],
+        "luxor": ["salve!! que bom ter você por aqui!! ✨🐉", "salve, viajante!! seja bem-vindo(a) com toda a luz!! ✨"],
+    },
     "tchau": {
         "ignis": ["tchau!! volta logo, tem muito chão pra queimar ainda!! 🔥", "beleza, vai!! mas eu tô de olho, hein!! 🔥🐉"],
         "umbra": ["...vá... eu vou continuar aqui, nas sombras, observando... 🌑", "...até logo... ou talvez eu já esteja te seguindo... 🌑🐉"],
         "luxor": ["até mais!! que a luz te acompanhe onde quer que você vá!! ✨", "tchau tchau!! cuide-se, viajante!! ✨🐉"],
+    },
+    "até mais": {
+        "ignis": ["até mais!! não demora, ou eu esfrio de tédio!! 🔥🐉", "belezinha, até mais!! vai com fogo no coração!! 🔥"],
+        "umbra": ["...até mais... eu vou estar por aqui, nas sombras, como sempre... 🌑", "...partiu?? tudo bem... até a próxima vez... 🌑🐉"],
+        "luxor": ["até mais, viajante!! volte sempre que precisar!! ✨🐉", "até logo!! desejo tudo de bom até a próxima!! ✨"],
+    },
+    "falou": {
+        "ignis": ["falou!! e não esquece de voltar pra ver o fogo continuar!! 🔥🐉", "falou, mortal!! até a próxima confusão!! 🔥"],
+        "umbra": ["...falou... eu já sabia que essa conversa ia terminar... 🌑", "...falou... até quando as sombras nos reunirem de novo... 🌑🐉"],
+        "luxor": ["falou!! cuide-se bastante, tá?? ✨🐉", "falou, viajante!! até a próxima, com carinho!! ✨"],
     },
     "quem é você": {
         "ignis": ["EU SOU IGNIS!! uma das três cabeças de Trisoul, feita de fúria e fogo!! 🔥🐉", "sou a cabeça que não tem medo de nada!! Ignis, prazer (ou não)!! 🔥"],
@@ -397,10 +447,18 @@ class TrisoulCog(commands.Cog, name="Trisoul"):
         texto_lower = texto.lower().strip()
         if texto_lower in self.db["respostas"]:
             return texto_lower
+        melhor = None
         for gatilho in self.db["respostas"]:
-            if gatilho in texto_lower:
-                return gatilho
-        return None
+            if len(gatilho) <= 3 and gatilho.replace(" ", "").isalpha():
+                # gatilhos bem curtos (ex.: "oi") exigem limite de palavra,
+                # senão bateriam dentro de outras palavras (ex.: "coisa", "boiada")
+                encontrado = re.search(r'(?<!\w)' + re.escape(gatilho) + r'(?!\w)', texto_lower)
+            else:
+                encontrado = gatilho in texto_lower
+            if encontrado:
+                if melhor is None or len(gatilho) > len(melhor):
+                    melhor = gatilho
+        return melhor
 
     def _responder(self, gatilho: str, cabeca: str) -> str:
         entry = self.db["respostas"].get(gatilho, {})
@@ -1064,6 +1122,361 @@ class GruposCog(commands.Cog, name="Grupos"):
 
 
 # ══════════════════════════════════════════════════════════════════
+#  📋  MÓDULO DE FICHAS — novos membros, staff e parcerias
+# ══════════════════════════════════════════════════════════════════
+
+COR_FICHA_MEMBRO      = 0xFFD700
+COR_FICHA_STAFF       = 0xFF6B00
+COR_FICHA_MAPA        = 0x2ECC71
+COR_FICHA_COMERCIAL   = 0x3498DB
+COR_FICHA_DJ          = 0x9B59B6
+COR_FICHA_CLA         = COR_ROXO_GRUPO
+
+FOOTER_GDS = "🐲 GODS OF DRAGON SOULS"
+
+_FICHA_NOVO_MEMBRO_PT = """🔥 GODS OF DRAGON SOULS 🔥
+
+🐲 Apelido no servidor GDS:
+
+👤 Nome:
+
+🎂 Idade:
+
+🎮 Usuário Roblox:
+
+💬 Usuário Discord:
+
+🌎 Idioma:
+
+❓ Já participou de comunidade/clã?
+( ) Sim  ( ) Não
+Qual?
+
+🤝 Alguém te recomendou para a GDS?
+( ) Sim  ( ) Não
+Quem?
+
+🔥 Por que quer entrar na GDS?
+
+🐉🔥 Prepare suas asas e venha fazer parte da nossa horda!
+Seja muito bem-vindo(a) à GDS! 🐲✨"""
+
+_FICHA_NOVO_MEMBRO_ES = """🔥 GODS OF DRAGON SOULS 🔥
+
+🐲 Apodo en el servidor GDS:
+
+👤 Nombre:
+
+🎂 Edad:
+
+🎮 Usuario de Roblox:
+
+💬 Usuario de Discord:
+
+🌎 Idioma:
+
+❓ ¿Has formado parte de alguna comunidad/clan anteriormente?
+( ) Sí  ( ) No
+¿Cuál?
+
+🤝 ¿Alguien te recomendó para GDS?
+( ) Sí  ( ) No
+¿Quién?
+
+🔥 ¿Por qué quieres entrar a GDS?
+
+🐉🔥 ¡Extiende tus alas y únete a nuestra horda de dragones!
+¡Bienvenido(a) a GDS! 🐲🔥"""
+
+_FICHA_NOVO_MEMBRO_EN = """🔥 GODS OF DRAGON SOULS 🔥
+
+🐲 Server Nickname GDS:
+
+👤 Name:
+
+🎂 Age:
+
+🎮 Roblox Username:
+
+💬 Discord Username:
+
+🌎 Language:
+
+❓ Have you been part of a community/clan before?
+( ) Yes  ( ) No
+Which one?
+
+🤝 Did someone recommend you to GDS?
+( ) Yes  ( ) No
+Who?
+
+🔥 Why do you want to join GDS?
+
+🐉🔥 Spread your wings and join our dragon horde!
+Welcome to GDS! 🐲🔥"""
+
+_FICHA_STAFF = """🔥 GODS OF DRAGON SOULS 🔥
+
+👤 Nome:
+
+🐲 Apelido no servidor:
+
+🎂 Idade:
+
+💬 Usuário Discord:
+
+🎮 Usuário Roblox:
+
+🌎 Idioma:
+
+🛡️ Qual Staff deseja entrar?
+
+📋 Já foi Staff em alguma comunidade?
+( ) Sim  ( ) Não
+Qual?
+
+⏰ Disponibilidade:
+
+🤝 Por que quer ser Staff na GDS?
+
+⚔️ Quais funções sabe desempenhar?
+
+🧠 Como lidaria com conflitos?
+
+🐉 Por que deveríamos escolher você?
+
+📝 Informações adicionais:
+
+🔥🐲 Obrigado pelo interesse em fazer parte da Staff GDS!
+Sua ficha será avaliada pela nossa equipe."""
+
+_FICHA_PARCERIA_MAPA = """🔥 GODS OF DRAGON SOULS 🔥
+
+🎮 Nome do mapa:
+
+👤 Responsável:
+
+👥 Representante 1:
+
+👥 Representante 2:
+
+💬 Discord dos representantes:
+
+🔗 Link do mapa:
+
+🏷️ Grupo/Comunidade:
+
+👥 Quantidade de membros:
+
+📢 Onde nossa comunidade/canal será divulgado?
+
+🤝 O que busca com a parceria?
+
+🐉 O que o mapa oferece à GDS?
+
+📝 Informações adicionais:
+
+🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
+Sua proposta será analisada pela nossa equipe."""
+
+_FICHA_PARCERIA_COMERCIAL = """🔥 GODS OF DRAGON SOULS 🔥
+
+🏢 Nome da empresa/projeto:
+
+👤 Responsável:
+
+👥 Representante 1:
+
+👥 Representante 2:
+
+💬 Discord dos representantes:
+
+🔗 Link:
+
+📱 Redes sociais:
+
+💼 Área de atuação:
+
+📢 Onde nossa comunidade/canal será divulgado?
+
+🤝 Tipo de parceria desejada:
+
+📦 O que oferece à GDS?
+
+🐉 O que espera da GDS?
+
+📝 Informações adicionais:
+
+🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
+Sua proposta será analisada pela nossa equipe."""
+
+_FICHA_PARCERIA_DJ = """🔥 GODS OF DRAGON SOULS 🔥
+
+🎧 Nome artístico:
+
+👤 Responsável:
+
+👥 Representante 1:
+
+👥 Representante 2:
+
+💬 Discord dos representantes:
+
+🎶 Estilo musical:
+
+🔗 Perfil/Canal:
+
+📱 Redes sociais:
+
+🎤 Onde costuma se apresentar?
+
+📢 Onde nossa comunidade/canal será divulgado?
+
+🤝 O que busca com a parceria?
+
+🐉 O que oferece à GDS?
+
+🔥 O que espera da GDS?
+
+📝 Informações adicionais:
+
+🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
+Sua proposta será analisada pela nossa equipe."""
+
+_FICHA_PARCERIA_CLA = """🔥 GODS OF DRAGON SOULS 🔥
+
+🏷️ Nome do clã/comunidade:
+
+👑 Dono(a)/Líder:
+
+👥 Representante 1:
+
+👥 Representante 2:
+
+💬 Discord dos representantes:
+
+🔗 Convite do servidor:
+
+👥 Quantidade de membros:
+
+🎮 Atividade principal:
+
+📢 Onde nossa comunidade/canal será divulgado?
+
+🤝 O que busca com a parceria?
+
+🐉 O que sua comunidade oferece à GDS?
+
+🔥 O que espera da GDS?
+
+📝 Informações adicionais:
+
+🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
+Será um prazer conhecer sua comunidade e analisar a proposta."""
+
+# tipo -> (título, corpo, cor)
+_TIPOS_PARCERIA = {
+    "mapa":       ("Parceria de Mapa", _FICHA_PARCERIA_MAPA, COR_FICHA_MAPA),
+    "comercial":  ("Parceria Comercial", _FICHA_PARCERIA_COMERCIAL, COR_FICHA_COMERCIAL),
+    "dj":         ("Parceria DJ", _FICHA_PARCERIA_DJ, COR_FICHA_DJ),
+    "cla":        ("Parceria Clã/Comunidade", _FICHA_PARCERIA_CLA, COR_FICHA_CLA),
+    "comunidade": ("Parceria Clã/Comunidade", _FICHA_PARCERIA_CLA, COR_FICHA_CLA),
+}
+
+# idioma -> (título, corpo)
+_IDIOMAS_NOVO_MEMBRO = {
+    "pt": ("Ficha — Novos Membros", _FICHA_NOVO_MEMBRO_PT),
+    "es": ("Ficha — Nuevos Miembros", _FICHA_NOVO_MEMBRO_ES),
+    "en": ("New Member Form", _FICHA_NOVO_MEMBRO_EN),
+}
+
+
+def _normalizar(texto: str) -> str:
+    """minúsculas, sem espaço nas pontas e sem acentos (clã -> cla)."""
+    import unicodedata
+    texto = texto.lower().strip()
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c)
+    )
+
+
+class FichasCog(commands.Cog, name="Fichas"):
+    """Fichas de inscrição: novos membros, candidatura a Staff e parcerias."""
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    def _embed_ficha(self, titulo: str, corpo: str, cor: int) -> discord.Embed:
+        embed = discord.Embed(
+            title=f"🐉 {titulo}", description=corpo, color=cor,
+            timestamp=datetime.now(timezone.utc)
+        )
+        embed.set_footer(text=FOOTER_GDS)
+        return embed
+
+    @commands.command(name="novomembro", aliases=["ficha", "newmember", "nuevomiembro"])
+    async def novo_membro(self, ctx: commands.Context, idioma: str = "pt"):
+        """Envia a ficha de novos membros. Uso: t!novomembro [pt|es|en]"""
+        chave = _normalizar(idioma)
+        dados = _IDIOMAS_NOVO_MEMBRO.get(chave)
+        if not dados:
+            await ctx.send(embed=embed_erro("idioma inválido!! use `pt`, `es` ou `en`!!"))
+            return
+        titulo, corpo = dados
+        await ctx.send(embed=self._embed_ficha(titulo, corpo, COR_FICHA_MEMBRO))
+
+    @commands.command(name="staff", aliases=["candidaturastaff", "recrutamento"])
+    async def staff_form(self, ctx: commands.Context):
+        """Envia a ficha de candidatura a Staff. Uso: t!staff"""
+        await ctx.send(embed=self._embed_ficha("Ficha — Candidatura a Staff", _FICHA_STAFF, COR_FICHA_STAFF))
+
+    @commands.command(name="parceria", aliases=["parcerias"])
+    async def parceria(self, ctx: commands.Context, tipo: str = None):
+        """Envia uma ficha de parceria. Uso: t!parceria <mapa|comercial|dj|cla>"""
+        if tipo is None:
+            embed = discord.Embed(
+                title="🤝 Parcerias GDS",
+                description=(
+                    "escolha o tipo de parceria que você quer propor!!\n\n"
+                    "`t!parceria mapa` — parceria de mapa\n"
+                    "`t!parceria comercial` — parceria comercial\n"
+                    "`t!parceria dj` — parceria com DJ\n"
+                    "`t!parceria cla` — parceria de clã/comunidade"
+                ),
+                color=COR_ROXO_GRUPO, timestamp=datetime.now(timezone.utc)
+            )
+            embed.set_footer(text=FOOTER_GDS)
+            await ctx.send(embed=embed)
+            return
+
+        chave = _normalizar(tipo)
+        dados = _TIPOS_PARCERIA.get(chave)
+        if not dados:
+            await ctx.send(embed=embed_erro("tipo de parceria inválido!! use `mapa`, `comercial`, `dj` ou `cla`!!"))
+            return
+        titulo, corpo, cor = dados
+        await ctx.send(embed=self._embed_ficha(titulo, corpo, cor))
+
+    @commands.command(name="fichas")
+    async def listar_fichas(self, ctx: commands.Context):
+        """Lista todas as fichas disponíveis."""
+        embed = discord.Embed(
+            title="📋 Fichas Disponíveis",
+            description=(
+                "`t!novomembro [pt|es|en]` — ficha de novos membros\n"
+                "`t!staff` — candidatura a Staff\n"
+                "`t!parceria mapa` — parceria de mapa\n"
+                "`t!parceria comercial` — parceria comercial\n"
+                "`t!parceria dj` — parceria com DJ\n"
+                "`t!parceria cla` — parceria de clã/comunidade"
+            ),
+            color=COR_NEUTRA, timestamp=datetime.now(timezone.utc)
+        )
+        embed.set_footer(text=FOOTER_GDS)
+        await ctx.send(embed=embed)
+
+
+# ══════════════════════════════════════════════════════════════════
 #  📋  COMANDOS GERAIS (fora do cog)
 # ══════════════════════════════════════════════════════════════════
 
@@ -1110,6 +1523,16 @@ async def trisoul_help(ctx: commands.Context):
             "`t!addmembro @pessoa` — adiciona alguém no seu grupo\n"
             "`t!removermembro @pessoa` — remove alguém do seu grupo\n"
             "`t!encerrargrupo` — apaga seu grupo (cargo + canais)"
+        )
+    )
+    embed.add_field(
+        name="📋 Fichas",
+        inline=False,
+        value=(
+            "`t!novomembro [pt|es|en]` — ficha de novos membros\n"
+            "`t!staff` — candidatura a Staff\n"
+            "`t!parceria <mapa|comercial|dj|cla>` — fichas de parceria\n"
+            "`t!fichas` — lista todas as fichas disponíveis"
         )
     )
     embed.add_field(
@@ -1197,6 +1620,7 @@ async def _main():
     async with bot:
         await bot.add_cog(TrisoulCog(bot))
         await bot.add_cog(GruposCog(bot))
+        await bot.add_cog(FichasCog(bot))
         if not TOKEN:
             print("❌ ERRO: token não encontrado! Crie um .env com TRISOUL_TOKEN=seu_token")
             return
