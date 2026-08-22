@@ -35,6 +35,7 @@ import os
 import json
 import random
 import re
+import traceback
 from datetime import datetime, timezone
 from collections import defaultdict, deque
 from dotenv import load_dotenv
@@ -1433,6 +1434,9 @@ class FichaModalStep(discord.ui.Modal):
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
     async def on_error(self, interaction: discord.Interaction, error: Exception):
+        # imprime o traceback completo no console/logs (Railway -> aba Logs)
+        # pra dar pra descobrir exatamente o que quebrou
+        traceback.print_exception(type(error), error, error.__traceback__)
         mensagem = "❌ deu ruim ao processar sua ficha, tenta de novo!!"
         if interaction.response.is_done():
             await interaction.followup.send(mensagem, ephemeral=True)
