@@ -1422,10 +1422,18 @@ class FichaModalStep(discord.ui.Modal):
 
         proxima_etapa = self.etapa + 1
         if proxima_etapa < self.total_etapas:
-            # ainda faltam perguntas: encadeia o próximo modal
-            await interaction.response.send_modal(
-                FichaModalStep(self.cog, self.form_key, proxima_etapa, self.respostas)
+            # o Discord NÃO permite abrir um modal direto de dentro do
+            # on_submit de outro modal (erro 50035 / "Value must be one of
+            # {4, 5, 6, 7, 10, 12}"). Por isso mandamos um botão-ponte: ele
+            # é uma interação de BOTÃO, e essa sim pode abrir o próximo modal.
+            template = FORM_TEMPLATES[self.form_key]
+            embed = discord.Embed(
+                title=f"📝 {template['titulo']} — etapa {self.etapa + 1}/{self.total_etapas} concluída!!",
+                description="clique no botão abaixo pra continuar preenchendo sua ficha!!",
+                color=template["cor"],
             )
+            view = ContinuarFichaView(self.cog, self.form_key, proxima_etapa, self.respostas, interaction.user.id)
+            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
             return
 
         # acabaram as perguntas: mostra a prévia pra confirmar/editar
@@ -1442,6 +1450,40 @@ class FichaModalStep(discord.ui.Modal):
             await interaction.followup.send(mensagem, ephemeral=True)
         else:
             await interaction.response.send_message(mensagem, ephemeral=True)
+
+
+class ContinuarFichaView(discord.ui.View):
+    """Botão-ponte entre uma etapa e a próxima do modal encadeado.
+
+    O Discord não deixa responder a um modal-submit com outro modal, então
+    usamos essa view (uma interação de botão) como intermediária: ela é
+    quem de fato abre a próxima etapa quando clicada.
+    """
+
+    def __init__(self, cog: "FichasCog", form_key: str, proxima_etapa: int, respostas: dict, autor_id: int):
+        super().__init__(timeout=300)
+        self.cog = cog
+        self.form_key = form_key
+        self.proxima_etapa = proxima_etapa
+        self.respostas = respostas
+        self.autor_id = autor_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.autor_id:
+            await interaction.response.send_message("essa ficha não é sua!! 🚫", ephemeral=True)
+            return False
+        return True
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+    @discord.ui.button(label="Continuar Ficha", emoji="➡️", style=discord.ButtonStyle.primary)
+    async def continuar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(
+            FichaModalStep(self.cog, self.form_key, self.proxima_etapa, self.respostas)
+        )
+        self.stop()
 
 
 class ConfirmarFichaView(discord.ui.View):
