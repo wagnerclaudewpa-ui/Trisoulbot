@@ -48,7 +48,7 @@ DIALOGO_FILE = "trisoul_dialogo.json"
 FE_FILE      = "trisoul_fe.json"
 
 COOLDOWN_RESPOSTA   = 3     # segundos entre respostas automáticas por canal
-CHANCE_GATILHO_SEM_CHAMADO = 0.25   # chance de responder a um gatilho sem ser chamado
+CHANCE_GATILHO_SEM_CHAMADO = 0.0    # 0 = só responde gatilho quando é chamado (mencionado, "trisoul" ou nome de uma cabeça no texto)
 CHANCE_APARICAO_ESPONTANEA = 0.012  # chance de aparecer do nada por mensagem
 SILENCIO_MINIMO_APARICAO   = 90     # segundos de silêncio no canal antes de poder aparecer sozinho
 CHANCE_REACAO_EMOJI        = 0.35   # chance de reagir com emoji a palavra-chave
