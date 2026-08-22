@@ -26,6 +26,7 @@ Módulos:
   • Fichas        — formulários interativos (modal + confirmação) pra
                     novos membros, Staff e parcerias (mapa, comercial,
                     DJ, clã e comunidade — cada uma é sua própria ficha)
+  • Auditoria     — log total de ações do servidor num canal dedicado
 """
 
 import discord
@@ -79,6 +80,12 @@ _HEX_RE = re.compile(r'^#?[0-9A-Fa-f]{6}$')
 
 CARGO_GATILHO_ID   = 1485791325537439765   # quando alguém recebe ESSE cargo...
 CARGO_VINCULADO_ID = 1536210475333976205   # ...o bot dá esse cargo junto, automaticamente
+
+# ══════════════════════════════════════════════════════════════════
+#  ⚙️  CONFIGURAÇÕES — AUDITORIA (log total do servidor)
+# ══════════════════════════════════════════════════════════════════
+
+CANAL_AUDITORIA_ID = 1540860945746628638   # canal onde os logs de auditoria são postados
 
 # ══════════════════════════════════════════════════════════════════
 #  🤖  SETUP DO BOT
@@ -1724,6 +1731,461 @@ class FichasCog(commands.Cog, name="Fichas"):
 
 
 # ══════════════════════════════════════════════════════════════════
+#  🕵️  MÓDULO DE AUDITORIA — log total do servidor
+# ══════════════════════════════════════════════════════════════════
+#
+# Tudo que o Discord permite descobrir é logado no canal CANAL_AUDITORIA_ID:
+# criação/edição/exclusão de canais e cargos, mensagens apagadas/editadas,
+# entrada/saída/expulsão/ban de membros, apelido e cargos de membros mudando,
+# quem entrou/saiu/foi movido de call, mute/deafen por moderação, e mudanças
+# nas configurações do servidor.
+#
+# DE PROPÓSITO NÃO logamos apenas a REORDENAÇÃO de cargos (arrastar pra cima/
+# baixo na lista de cargos) — se um cargo mudar de posição e mais nada, o
+# evento é ignorado. Qualquer outra mudança no cargo (nome, cor, permissões
+# etc.) continua sendo logada normalmente, mesmo que a posição também tenha
+# mudado junto.
+#
+# LIMITAÇÃO DO DISCORD: pra saber quem apagou/editou algo ou moveu alguém de
+# call, o bot consulta o Audit Log do servidor (exige a permissão "Ver
+# Registro de Auditoria"). Se essa permissão não existir, ou se a ação não
+# tiver ficado registrada a tempo, o campo "responsável" fica em branco/
+# "não identificado" — isso é uma limitação da API do Discord, não do bot.
+# Além disso, mensagens apagadas só aparecem com o conteúdo se o bot já
+# tinha essa mensagem em cache (ou seja, se ela foi enviada enquanto o bot
+# estava online); mensagens muito antigas ou enviadas antes do bot ligar
+# aparecem sem conteúdo.
+
+COR_LOG_CANAL      = 0x3498DB
+COR_LOG_CARGO      = 0x9B59B6
+COR_LOG_MSG_DEL     = 0xE74C3C
+COR_LOG_MSG_EDIT    = 0xF1C40F
+COR_LOG_VOZ        = 0x1ABC9C
+COR_LOG_MEMBRO_IN   = 0x2ECC71
+COR_LOG_MEMBRO_OUT  = 0xE74C3C
+COR_LOG_SERVIDOR   = 0x95A5A6
+
+JANELA_AUDIT_LOG = 6  # segundos: até quanto tempo atrás aceitamos uma entrada do audit log como "a causa" do evento
+
+
+async def _achar_responsavel(guild: discord.Guild, action: "discord.AuditLogAction", target_id: int | None = None, janela: int = JANELA_AUDIT_LOG):
+    """Procura no Audit Log do servidor quem foi o responsável por uma ação recente.
+    Retorna o discord.Member/User responsável, ou None se não achar (sem permissão,
+    ação não registrada, ou passou da janela de tempo aceitável)."""
+    me = guild.me
+    if me is None or not me.guild_permissions.view_audit_log:
+        return None
+    try:
+        agora = datetime.now(timezone.utc)
+        async for entry in guild.audit_logs(action=action, limit=8):
+            if (agora - entry.created_at).total_seconds() > janela:
+                break
+            if target_id is not None:
+                alvo = getattr(entry.target, "id", None)
+                if alvo != target_id:
+                    continue
+            return entry.user
+    except (discord.Forbidden, discord.HTTPException):
+        return None
+    return None
+
+
+class AuditoriaCog(commands.Cog, name="Auditoria"):
+    """Log total de ações do servidor, postado em CANAL_AUDITORIA_ID."""
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    # ── helper de envio ─────────────────────────────────
+
+    async def _log(self, guild: discord.Guild, embed: discord.Embed):
+        if guild is None:
+            return
+        canal = guild.get_channel(CANAL_AUDITORIA_ID)
+        if canal is None:
+            return
+        embed.set_footer(text="🐉 Trisoul • Auditoria")
+        embed.timestamp = datetime.now(timezone.utc)
+        try:
+            await canal.send(embed=embed)
+        except (discord.Forbidden, discord.HTTPException):
+            pass
+
+    # ── mensagens ────────────────────────────────────────
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        if message.guild is None or message.author is None:
+            return
+        if message.author.id == self.bot.user.id:
+            return  # não loga o próprio bot apagando as próprias mensagens (ex.: fichas)
+
+        responsavel = await _achar_responsavel(
+            message.guild, discord.AuditLogAction.message_delete, target_id=message.author.id
+        )
+
+        embed = discord.Embed(title="🗑️ Mensagem apagada", color=COR_LOG_MSG_DEL)
+        embed.add_field(name="Autor", value=f"{message.author.mention} (`{message.author}`)", inline=False)
+        embed.add_field(name="Canal", value=message.channel.mention if hasattr(message.channel, "mention") else str(message.channel), inline=False)
+        conteudo = message.content.strip() if message.content else ""
+        if not conteudo and message.attachments:
+            conteudo = f"*(sem texto — {len(message.attachments)} anexo(s))*"
+        elif not conteudo:
+            conteudo = "*(sem texto — provavelmente só embed/sticker)*"
+        embed.add_field(name="Conteúdo", value=conteudo[:1000], inline=False)
+        if responsavel and responsavel.id != message.author.id:
+            embed.add_field(name="Apagada por", value=f"{responsavel.mention} (moderação)", inline=False)
+        else:
+            embed.add_field(name="Apagada por", value="provavelmente pelo(a) próprio(a) autor(a) *(ou não identificado)*", inline=False)
+        await self._log(message.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_bulk_message_delete(self, messages: list[discord.Message]):
+        if not messages:
+            return
+        guild = messages[0].guild
+        canal = messages[0].channel
+        if guild is None:
+            return
+        responsavel = await _achar_responsavel(guild, discord.AuditLogAction.message_bulk_delete, target_id=canal.id)
+        embed = discord.Embed(
+            title="🗑️🗑️ Mensagens apagadas em massa",
+            description=f"**{len(messages)}** mensagens apagadas em {canal.mention if hasattr(canal, 'mention') else canal}",
+            color=COR_LOG_MSG_DEL,
+        )
+        if responsavel:
+            embed.add_field(name="Apagadas por", value=responsavel.mention, inline=False)
+        await self._log(guild, embed)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before: discord.Message, after: discord.Message):
+        if before.guild is None or before.author.bot:
+            return
+        if before.content == after.content:
+            return  # ex.: só um embed carregou, texto não mudou
+
+        embed = discord.Embed(title="✏️ Mensagem editada", color=COR_LOG_MSG_EDIT)
+        embed.add_field(name="Autor", value=f"{before.author.mention} (`{before.author}`)", inline=False)
+        embed.add_field(name="Canal", value=before.channel.mention, inline=False)
+        embed.add_field(name="Antes", value=(before.content.strip()[:1000] or "*vazio*"), inline=False)
+        embed.add_field(name="Depois", value=(after.content.strip()[:1000] or "*vazio*"), inline=False)
+        embed.add_field(name="Link", value=f"[ir até a mensagem]({after.jump_url})", inline=False)
+        await self._log(before.guild, embed)
+
+    # ── canais ───────────────────────────────────────────
+
+    @commands.Cog.listener()
+    async def on_guild_channel_create(self, channel: discord.abc.GuildChannel):
+        responsavel = await _achar_responsavel(channel.guild, discord.AuditLogAction.channel_create, target_id=channel.id)
+        embed = discord.Embed(
+            title="📁 Canal criado",
+            description=f"**{channel.name}** (`{channel.type}`)\nID: `{channel.id}`",
+            color=COR_LOG_CANAL,
+        )
+        if responsavel:
+            embed.add_field(name="Criado por", value=responsavel.mention, inline=False)
+        await self._log(channel.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_delete(self, channel: discord.abc.GuildChannel):
+        responsavel = await _achar_responsavel(channel.guild, discord.AuditLogAction.channel_delete, target_id=channel.id)
+        embed = discord.Embed(
+            title="🗑️ Canal apagado",
+            description=f"**{channel.name}** (`{channel.type}`)\nID: `{channel.id}`",
+            color=COR_LOG_CANAL,
+        )
+        if responsavel:
+            embed.add_field(name="Apagado por", value=responsavel.mention, inline=False)
+        await self._log(channel.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_guild_channel_update(self, before: discord.abc.GuildChannel, after: discord.abc.GuildChannel):
+        mudancas = []
+        if before.name != after.name:
+            mudancas.append(f"**Nome:** `{before.name}` → `{after.name}`")
+        if getattr(before, "topic", None) != getattr(after, "topic", None):
+            mudancas.append("**Tópico alterado**")
+        if getattr(before, "nsfw", None) != getattr(after, "nsfw", None):
+            mudancas.append(f"**NSFW:** `{before.nsfw}` → `{after.nsfw}`")
+        if getattr(before, "slowmode_delay", None) != getattr(after, "slowmode_delay", None):
+            mudancas.append(f"**Slowmode:** `{before.slowmode_delay}s` → `{after.slowmode_delay}s`")
+        if getattr(before, "bitrate", None) != getattr(after, "bitrate", None):
+            mudancas.append(f"**Bitrate:** `{before.bitrate}` → `{after.bitrate}`")
+        if getattr(before, "user_limit", None) != getattr(after, "user_limit", None):
+            mudancas.append(f"**Limite de usuários:** `{before.user_limit}` → `{after.user_limit}`")
+        if getattr(before, "category", None) != getattr(after, "category", None):
+            cat_antes = before.category.name if getattr(before, "category", None) else "Nenhuma"
+            cat_depois = after.category.name if getattr(after, "category", None) else "Nenhuma"
+            mudancas.append(f"**Categoria:** `{cat_antes}` → `{cat_depois}`")
+        if before.overwrites != after.overwrites:
+            mudancas.append("**Permissões do canal foram alteradas**")
+
+        if not mudancas:
+            return  # nada relevante mudou
+
+        responsavel = await _achar_responsavel(after.guild, discord.AuditLogAction.channel_update, target_id=after.id)
+        embed = discord.Embed(
+            title="🔧 Canal atualizado",
+            description=f"{after.mention if hasattr(after, 'mention') else after.name}\n\n" + "\n".join(mudancas),
+            color=COR_LOG_CANAL,
+        )
+        if responsavel:
+            embed.add_field(name="Alterado por", value=responsavel.mention, inline=False)
+        await self._log(after.guild, embed)
+
+    # ── cargos ───────────────────────────────────────────
+
+    @commands.Cog.listener()
+    async def on_guild_role_create(self, role: discord.Role):
+        responsavel = await _achar_responsavel(role.guild, discord.AuditLogAction.role_create, target_id=role.id)
+        embed = discord.Embed(
+            title="🎭 Cargo criado",
+            description=f"{role.mention} (`{role.name}`)\nID: `{role.id}`",
+            color=COR_LOG_CARGO,
+        )
+        if responsavel:
+            embed.add_field(name="Criado por", value=responsavel.mention, inline=False)
+        await self._log(role.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role):
+        responsavel = await _achar_responsavel(role.guild, discord.AuditLogAction.role_delete, target_id=role.id)
+        embed = discord.Embed(
+            title="🗑️ Cargo apagado",
+            description=f"**{role.name}**\nID: `{role.id}`",
+            color=COR_LOG_CARGO,
+        )
+        if responsavel:
+            embed.add_field(name="Apagado por", value=responsavel.mention, inline=False)
+        await self._log(role.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_guild_role_update(self, before: discord.Role, after: discord.Role):
+        # Ignora DE PROPÓSITO mudanças de posição (reordenar cargos na lista).
+        # Só entra na lista de mudanças o que NÃO for "position".
+        mudancas = []
+        if before.name != after.name:
+            mudancas.append(f"**Nome:** `{before.name}` → `{after.name}`")
+        if before.colour != after.colour:
+            mudancas.append(f"**Cor:** `{before.colour}` → `{after.colour}`")
+        if before.hoist != after.hoist:
+            mudancas.append(f"**Exibir separado:** `{before.hoist}` → `{after.hoist}`")
+        if before.mentionable != after.mentionable:
+            mudancas.append(f"**Mencionável:** `{before.mentionable}` → `{after.mentionable}`")
+        if before.permissions != after.permissions:
+            antes_perms = {p for p, v in before.permissions if v}
+            depois_perms = {p for p, v in after.permissions if v}
+            ganhas = depois_perms - antes_perms
+            perdidas = antes_perms - depois_perms
+            if ganhas:
+                mudancas.append(f"**Permissões adicionadas:** {', '.join(sorted(ganhas))}")
+            if perdidas:
+                mudancas.append(f"**Permissões removidas:** {', '.join(sorted(perdidas))}")
+        # (before.position != after.position) é ignorado de propósito — não entra em `mudancas`
+
+        if not mudancas:
+            return  # só a posição mudou (ou nada mudou) — não loga
+
+        responsavel = await _achar_responsavel(after.guild, discord.AuditLogAction.role_update, target_id=after.id)
+        embed = discord.Embed(
+            title="🔧 Cargo atualizado",
+            description=f"{after.mention}\n\n" + "\n".join(mudancas),
+            color=COR_LOG_CARGO,
+        )
+        if responsavel:
+            embed.add_field(name="Alterado por", value=responsavel.mention, inline=False)
+        await self._log(after.guild, embed)
+
+    # ── voz ──────────────────────────────────────────────
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        guild = member.guild
+
+        if before.channel != after.channel:
+            if before.channel is None and after.channel is not None:
+                embed = discord.Embed(
+                    title="🔊 Entrou em uma call",
+                    description=f"{member.mention} entrou em {after.channel.mention}",
+                    color=COR_LOG_VOZ,
+                )
+                await self._log(guild, embed)
+            elif before.channel is not None and after.channel is None:
+                embed = discord.Embed(
+                    title="🔇 Saiu de uma call",
+                    description=f"{member.mention} saiu de {before.channel.mention}",
+                    color=COR_LOG_VOZ,
+                )
+                await self._log(guild, embed)
+            elif before.channel is not None and after.channel is not None:
+                # pode ter sido o próprio membro mudando de call, ou um mod movendo ele
+                responsavel = await _achar_responsavel(guild, discord.AuditLogAction.member_move, target_id=None)
+                embed = discord.Embed(
+                    title="🔀 Mudou de call",
+                    description=f"{member.mention}: {before.channel.mention} → {after.channel.mention}",
+                    color=COR_LOG_VOZ,
+                )
+                if responsavel and responsavel.id != member.id:
+                    embed.add_field(name="Movido por", value=responsavel.mention, inline=False)
+                await self._log(guild, embed)
+
+        # mute/deafen aplicado pelo servidor (moderação) — ignora self-mute/self-deafen
+        if before.mute != after.mute or before.deaf != after.deaf:
+            responsavel = await _achar_responsavel(guild, discord.AuditLogAction.member_update, target_id=member.id)
+            partes = []
+            if before.mute != after.mute:
+                partes.append(f"**Mutado (servidor):** `{before.mute}` → `{after.mute}`")
+            if before.deaf != after.deaf:
+                partes.append(f"**Ensurdecido (servidor):** `{before.deaf}` → `{after.deaf}`")
+            embed = discord.Embed(
+                title="🎙️ Voz — mute/deafen alterado",
+                description=f"{member.mention}\n\n" + "\n".join(partes),
+                color=COR_LOG_VOZ,
+            )
+            if responsavel:
+                embed.add_field(name="Alterado por", value=responsavel.mention, inline=False)
+            await self._log(guild, embed)
+
+    # ── membros ──────────────────────────────────────────
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        criada_em = int(member.created_at.timestamp())
+        embed = discord.Embed(
+            title="📥 Membro entrou",
+            description=(
+                f"{member.mention} (`{member}`)\nID: `{member.id}`\n"
+                f"Conta criada: <t:{criada_em}:R>"
+            ),
+            color=COR_LOG_MEMBRO_IN,
+        )
+        await self._log(member.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: discord.Member):
+        responsavel = await _achar_responsavel(member.guild, discord.AuditLogAction.kick, target_id=member.id)
+        if responsavel:
+            embed = discord.Embed(
+                title="👢 Membro expulso (kick)",
+                description=f"{member.mention} (`{member}`)\nID: `{member.id}`",
+                color=COR_LOG_MEMBRO_OUT,
+            )
+            embed.add_field(name="Expulso por", value=responsavel.mention, inline=False)
+        else:
+            embed = discord.Embed(
+                title="📤 Membro saiu",
+                description=f"{member.mention} (`{member}`)\nID: `{member.id}`",
+                color=COR_LOG_MEMBRO_OUT,
+            )
+        await self._log(member.guild, embed)
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.abc.User):
+        responsavel = await _achar_responsavel(guild, discord.AuditLogAction.ban, target_id=user.id)
+        embed = discord.Embed(
+            title="🔨 Membro banido",
+            description=f"{user.mention} (`{user}`)\nID: `{user.id}`",
+            color=COR_LOG_MEMBRO_OUT,
+        )
+        if responsavel:
+            embed.add_field(name="Banido por", value=responsavel.mention, inline=False)
+        await self._log(guild, embed)
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user: discord.abc.User):
+        responsavel = await _achar_responsavel(guild, discord.AuditLogAction.unban, target_id=user.id)
+        embed = discord.Embed(
+            title="🕊️ Membro desbanido",
+            description=f"{user.mention} (`{user}`)\nID: `{user.id}`",
+            color=COR_LOG_MEMBRO_IN,
+        )
+        if responsavel:
+            embed.add_field(name="Desbanido por", value=responsavel.mention, inline=False)
+        await self._log(guild, embed)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        guild = after.guild
+
+        if before.nick != after.nick:
+            responsavel = await _achar_responsavel(guild, discord.AuditLogAction.member_update, target_id=after.id)
+            embed = discord.Embed(
+                title="✏️ Apelido alterado",
+                description=(
+                    f"{after.mention}\n**Antes:** `{before.nick or before.name}`\n"
+                    f"**Depois:** `{after.nick or after.name}`"
+                ),
+                color=COR_LOG_MEMBRO_IN,
+            )
+            if responsavel and responsavel.id != after.id:
+                embed.add_field(name="Alterado por", value=responsavel.mention, inline=False)
+            await self._log(guild, embed)
+
+        cargos_antes = set(before.roles)
+        cargos_depois = set(after.roles)
+        ganhos = cargos_depois - cargos_antes
+        perdidos = cargos_antes - cargos_depois
+        if ganhos or perdidos:
+            responsavel = await _achar_responsavel(guild, discord.AuditLogAction.member_role_update, target_id=after.id)
+            partes = []
+            if ganhos:
+                partes.append("**Ganhou:** " + ", ".join(r.mention for r in ganhos))
+            if perdidos:
+                partes.append("**Perdeu:** " + ", ".join(r.mention for r in perdidos))
+            embed = discord.Embed(
+                title="🎭 Cargos do membro alterados",
+                description=f"{after.mention}\n\n" + "\n".join(partes),
+                color=COR_LOG_CARGO,
+            )
+            if responsavel:
+                embed.add_field(name="Alterado por", value=responsavel.mention, inline=False)
+            await self._log(guild, embed)
+
+        # timeout (comunicação restrita) — nome do atributo mudou entre versões do discord.py
+        antes_timeout = getattr(before, "timed_out_until", None) or getattr(before, "communication_disabled_until", None)
+        depois_timeout = getattr(after, "timed_out_until", None) or getattr(after, "communication_disabled_until", None)
+        if antes_timeout != depois_timeout:
+            responsavel = await _achar_responsavel(guild, discord.AuditLogAction.member_update, target_id=after.id)
+            if depois_timeout:
+                desc = f"{after.mention} recebeu timeout até <t:{int(depois_timeout.timestamp())}:F>"
+                titulo = "⏳ Timeout aplicado"
+            else:
+                desc = f"{after.mention} teve o timeout removido"
+                titulo = "⏳ Timeout removido"
+            embed = discord.Embed(title=titulo, description=desc, color=COR_LOG_MEMBRO_OUT)
+            if responsavel:
+                embed.add_field(name="Aplicado por", value=responsavel.mention, inline=False)
+            await self._log(guild, embed)
+
+    # ── servidor ─────────────────────────────────────────
+
+    @commands.Cog.listener()
+    async def on_guild_update(self, before: discord.Guild, after: discord.Guild):
+        mudancas = []
+        if before.name != after.name:
+            mudancas.append(f"**Nome do servidor:** `{before.name}` → `{after.name}`")
+        if before.icon != after.icon:
+            mudancas.append("**Ícone do servidor foi alterado**")
+        if before.verification_level != after.verification_level:
+            mudancas.append(f"**Nível de verificação:** `{before.verification_level}` → `{after.verification_level}`")
+        if before.vanity_url_code != after.vanity_url_code:
+            mudancas.append(f"**Link personalizado:** `{before.vanity_url_code}` → `{after.vanity_url_code}`")
+
+        if not mudancas:
+            return
+
+        responsavel = await _achar_responsavel(after, discord.AuditLogAction.guild_update)
+        embed = discord.Embed(
+            title="⚙️ Configurações do servidor alteradas",
+            description="\n".join(mudancas),
+            color=COR_LOG_SERVIDOR,
+        )
+        if responsavel:
+            embed.add_field(name="Alterado por", value=responsavel.mention, inline=False)
+        await self._log(after, embed)
+
+
+# ══════════════════════════════════════════════════════════════════
 #  📋  COMANDOS GERAIS (fora do cog)
 # ══════════════════════════════════════════════════════════════════
 
@@ -1781,6 +2243,16 @@ async def trisoul_help(ctx: commands.Context):
             "`t!parceria <mapa|comercial|dj|cla|comunidade>` — fichas de parceria\n"
             "`t!fichas` — lista todas as fichas disponíveis\n"
             "*(formulário interativo: preenche, confere e confirma antes de enviar!!)*"
+        )
+    )
+    embed.add_field(
+        name="🕵️ Auditoria",
+        inline=False,
+        value=(
+            "log automático e total do servidor, postado no canal de auditoria!!\n"
+            "canais, cargos, mensagens apagadas/editadas, entradas/saídas/kicks/bans, "
+            "call e mudanças no servidor — tudo, exceto reordenação de cargos.\n"
+            "*(não precisa de comando, é automático!!)*"
         )
     )
     embed.add_field(
@@ -1870,6 +2342,7 @@ async def _main():
         await bot.add_cog(GruposCog(bot))
         await bot.add_cog(CargoVinculadoCog(bot))
         await bot.add_cog(FichasCog(bot))
+        await bot.add_cog(AuditoriaCog(bot))
         if not TOKEN:
             print("❌ ERRO: token não encontrado! Crie um .env com TRISOUL_TOKEN=seu_token")
             return
