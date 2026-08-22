@@ -1795,6 +1795,10 @@ class AuditoriaCog(commands.Cog, name="Auditoria"):
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        # buffers pra agrupar reordenação de canais (um "arrastar" solta vários
+        # eventos CHANNEL_UPDATE em cascata — juntamos tudo numa mensagem só)
+        self._posicoes_pendentes: dict[int, dict[int, str]] = defaultdict(dict)
+        self._posicoes_task: dict[int, asyncio.Task] = {}
 
     # ── helper de envio ─────────────────────────────────
 
@@ -1920,8 +1924,14 @@ class AuditoriaCog(commands.Cog, name="Auditoria"):
         if before.overwrites != after.overwrites:
             mudancas.append("**Permissões do canal foram alteradas**")
 
+        mudou_posicao = getattr(before, "position", None) != getattr(after, "position", None)
+
         if not mudancas:
-            return  # nada relevante mudou
+            if mudou_posicao:
+                # só a posição mudou (arrastou o canal na lista) — agrupa antes de logar,
+                # porque mover 1 canal costuma disparar update em cascata nos vizinhos também
+                self._agendar_log_posicao(after)
+            return
 
         responsavel = await _achar_responsavel(after.guild, discord.AuditLogAction.channel_update, target_id=after.id)
         embed = discord.Embed(
@@ -1932,6 +1942,45 @@ class AuditoriaCog(commands.Cog, name="Auditoria"):
         if responsavel:
             embed.add_field(name="Alterado por", value=responsavel.mention, inline=False)
         await self._log(after.guild, embed)
+
+    def _agendar_log_posicao(self, channel: discord.abc.GuildChannel):
+        """Acumula canais que mudaram de posição e agenda um flush único
+        depois de um breve silêncio, pra não spammar um log por canal."""
+        guild = channel.guild
+        self._posicoes_pendentes[guild.id][channel.id] = channel.name
+
+        task_antiga = self._posicoes_task.get(guild.id)
+        if task_antiga and not task_antiga.done():
+            task_antiga.cancel()
+        self._posicoes_task[guild.id] = asyncio.create_task(self._flush_posicoes(guild))
+
+    async def _flush_posicoes(self, guild: discord.Guild):
+        try:
+            await asyncio.sleep(2.0)  # espera a cascata de eventos terminar
+        except asyncio.CancelledError:
+            return  # chegou update novo antes do tempo — a task nova cuida do flush
+
+        pendentes = self._posicoes_pendentes.pop(guild.id, {})
+        self._posicoes_task.pop(guild.id, None)
+        if not pendentes:
+            return
+
+        responsavel = await _achar_responsavel(guild, discord.AuditLogAction.channel_update)
+        nomes = ", ".join(f"`{nome}`" for nome in pendentes.values())
+        embed = discord.Embed(
+            title="↕️ Canais reordenados",
+            description=f"canais que mudaram de posição na lista: {nomes}",
+            color=COR_LOG_CANAL,
+        )
+        if responsavel:
+            embed.add_field(name="Provavelmente movido por", value=responsavel.mention, inline=False)
+        else:
+            embed.add_field(
+                name="Responsável",
+                value="não identificado *(o Discord nem sempre registra reordenação de canal no Audit Log)*",
+                inline=False,
+            )
+        await self._log(guild, embed)
 
     # ── cargos ───────────────────────────────────────────
 
