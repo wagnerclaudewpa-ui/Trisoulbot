@@ -3,7 +3,7 @@
 ║              🐉  TRISOUL BOT  🔥🌑✨                              ║
 ║      O Filho dos Deuses Dragônicos — Três Consciências            ║
 ║        Ignis (Fogo) • Umbra (Sombra) • Luxor (Luz)                ║
-║                         v1.1 — Online                             ║
+║                         v1.2 — Online                             ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 Lore rápida:
@@ -23,6 +23,9 @@ Módulos:
   • Invocação     — força uma cabeça específica a se manifestar
   • Profecia      — oráculo temático de cada cabeça
   • Grupos        — painel com botão que cria cargo + chat + call pro usuário
+  • Fichas        — formulários interativos (modal + confirmação) pra
+                    novos membros, Staff e parcerias (mapa, comercial,
+                    DJ, clã e comunidade — cada uma é sua própria ficha)
 """
 
 import discord
@@ -828,7 +831,7 @@ class TrisoulCog(commands.Cog, name="Trisoul"):
             ),
             color=COR_NEUTRA, timestamp=datetime.now(timezone.utc)
         )
-        embed.set_footer(text="🐉 Trisoul Bot v1.1")
+        embed.set_footer(text="🐉 Trisoul Bot v1.2")
         await ctx.send(embed=embed)
 
 
@@ -1122,8 +1125,23 @@ class GruposCog(commands.Cog, name="Grupos"):
 
 
 # ══════════════════════════════════════════════════════════════════
-#  📋  MÓDULO DE FICHAS — novos membros, staff e parcerias
+#  📋  MÓDULO DE FICHAS — formulário interativo (modal + confirmação)
 # ══════════════════════════════════════════════════════════════════
+#
+# Como funciona:
+#   1) o comando (t!novomembro, t!staff, t!parceria <tipo>) manda um
+#      cartão com um botão "📝 Preencher Ficha";
+#   2) clicar abre um Modal com até 5 campos (limite do Discord por
+#      modal!); se a ficha tem mais perguntas, ao enviar esse modal o
+#      bot abre automaticamente o próximo, até acabar as perguntas;
+#   3) no final, o bot manda uma prévia com tudo que foi respondido e
+#      3 botões: ✅ Confirmar e Enviar / ✏️ Editar / ❌ Cancelar;
+#   4) só quando a pessoa confirma é que a ficha preenchida (formatada
+#      certinha, com cada resposta no campo certo) é postada no canal.
+#
+# `cla` e `comunidade` agora são fichas totalmente separadas (cada
+# uma com seu próprio conjunto de perguntas e cor), em vez de serem
+# a mesma ficha por trás de dois nomes.
 
 COR_FICHA_MEMBRO      = 0xFFD700
 COR_FICHA_STAFF       = 0xFF6B00
@@ -1131,263 +1149,215 @@ COR_FICHA_MAPA        = 0x2ECC71
 COR_FICHA_COMERCIAL   = 0x3498DB
 COR_FICHA_DJ          = 0x9B59B6
 COR_FICHA_CLA         = COR_ROXO_GRUPO
+COR_FICHA_COMUNIDADE  = 0x1ABC9C
 
 FOOTER_GDS = "🐲 GODS OF DRAGON SOULS"
 
-_FICHA_NOVO_MEMBRO_PT = """🔥 GODS OF DRAGON SOULS 🔥
-
-🐲 Apelido no servidor GDS:
-
-👤 Nome:
-
-🎂 Idade:
-
-🎮 Usuário Roblox:
-
-💬 Usuário Discord:
-
-🌎 Idioma:
-
-❓ Já participou de comunidade/clã?
-( ) Sim  ( ) Não
-Qual?
-
-🤝 Alguém te recomendou para a GDS?
-( ) Sim  ( ) Não
-Quem?
-
-🔥 Por que quer entrar na GDS?
-
-🐉🔥 Prepare suas asas e venha fazer parte da nossa horda!
-Seja muito bem-vindo(a) à GDS! 🐲✨"""
-
-_FICHA_NOVO_MEMBRO_ES = """🔥 GODS OF DRAGON SOULS 🔥
-
-🐲 Apodo en el servidor GDS:
-
-👤 Nombre:
-
-🎂 Edad:
-
-🎮 Usuario de Roblox:
-
-💬 Usuario de Discord:
-
-🌎 Idioma:
-
-❓ ¿Has formado parte de alguna comunidad/clan anteriormente?
-( ) Sí  ( ) No
-¿Cuál?
-
-🤝 ¿Alguien te recomendó para GDS?
-( ) Sí  ( ) No
-¿Quién?
-
-🔥 ¿Por qué quieres entrar a GDS?
-
-🐉🔥 ¡Extiende tus alas y únete a nuestra horda de dragones!
-¡Bienvenido(a) a GDS! 🐲🔥"""
-
-_FICHA_NOVO_MEMBRO_EN = """🔥 GODS OF DRAGON SOULS 🔥
-
-🐲 Server Nickname GDS:
-
-👤 Name:
-
-🎂 Age:
-
-🎮 Roblox Username:
-
-💬 Discord Username:
-
-🌎 Language:
-
-❓ Have you been part of a community/clan before?
-( ) Yes  ( ) No
-Which one?
-
-🤝 Did someone recommend you to GDS?
-( ) Yes  ( ) No
-Who?
-
-🔥 Why do you want to join GDS?
-
-🐉🔥 Spread your wings and join our dragon horde!
-Welcome to GDS! 🐲🔥"""
-
-_FICHA_STAFF = """🔥 GODS OF DRAGON SOULS 🔥
-
-👤 Nome:
-
-🐲 Apelido no servidor:
-
-🎂 Idade:
-
-💬 Usuário Discord:
-
-🎮 Usuário Roblox:
-
-🌎 Idioma:
-
-🛡️ Qual Staff deseja entrar?
-
-📋 Já foi Staff em alguma comunidade?
-( ) Sim  ( ) Não
-Qual?
-
-⏰ Disponibilidade:
-
-🤝 Por que quer ser Staff na GDS?
-
-⚔️ Quais funções sabe desempenhar?
-
-🧠 Como lidaria com conflitos?
-
-🐉 Por que deveríamos escolher você?
-
-📝 Informações adicionais:
-
-🔥🐲 Obrigado pelo interesse em fazer parte da Staff GDS!
-Sua ficha será avaliada pela nossa equipe."""
-
-_FICHA_PARCERIA_MAPA = """🔥 GODS OF DRAGON SOULS 🔥
-
-🎮 Nome do mapa:
-
-👤 Responsável:
-
-👥 Representante 1:
-
-👥 Representante 2:
-
-💬 Discord dos representantes:
-
-🔗 Link do mapa:
-
-🏷️ Grupo/Comunidade:
-
-👥 Quantidade de membros:
-
-📢 Onde nossa comunidade/canal será divulgado?
-
-🤝 O que busca com a parceria?
-
-🐉 O que o mapa oferece à GDS?
-
-📝 Informações adicionais:
-
-🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
-Sua proposta será analisada pela nossa equipe."""
-
-_FICHA_PARCERIA_COMERCIAL = """🔥 GODS OF DRAGON SOULS 🔥
-
-🏢 Nome da empresa/projeto:
-
-👤 Responsável:
-
-👥 Representante 1:
-
-👥 Representante 2:
-
-💬 Discord dos representantes:
-
-🔗 Link:
-
-📱 Redes sociais:
-
-💼 Área de atuação:
-
-📢 Onde nossa comunidade/canal será divulgado?
-
-🤝 Tipo de parceria desejada:
-
-📦 O que oferece à GDS?
-
-🐉 O que espera da GDS?
-
-📝 Informações adicionais:
-
-🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
-Sua proposta será analisada pela nossa equipe."""
-
-_FICHA_PARCERIA_DJ = """🔥 GODS OF DRAGON SOULS 🔥
-
-🎧 Nome artístico:
-
-👤 Responsável:
-
-👥 Representante 1:
-
-👥 Representante 2:
-
-💬 Discord dos representantes:
-
-🎶 Estilo musical:
-
-🔗 Perfil/Canal:
-
-📱 Redes sociais:
-
-🎤 Onde costuma se apresentar?
-
-📢 Onde nossa comunidade/canal será divulgado?
-
-🤝 O que busca com a parceria?
-
-🐉 O que oferece à GDS?
-
-🔥 O que espera da GDS?
-
-📝 Informações adicionais:
-
-🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
-Sua proposta será analisada pela nossa equipe."""
-
-_FICHA_PARCERIA_CLA = """🔥 GODS OF DRAGON SOULS 🔥
-
-🏷️ Nome do clã/comunidade:
-
-👑 Dono(a)/Líder:
-
-👥 Representante 1:
-
-👥 Representante 2:
-
-💬 Discord dos representantes:
-
-🔗 Convite do servidor:
-
-👥 Quantidade de membros:
-
-🎮 Atividade principal:
-
-📢 Onde nossa comunidade/canal será divulgado?
-
-🤝 O que busca com a parceria?
-
-🐉 O que sua comunidade oferece à GDS?
-
-🔥 O que espera da GDS?
-
-📝 Informações adicionais:
-
-🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!
-Será um prazer conhecer sua comunidade e analisar a proposta."""
-
-# tipo -> (título, corpo, cor)
-_TIPOS_PARCERIA = {
-    "mapa":       ("Parceria de Mapa", _FICHA_PARCERIA_MAPA, COR_FICHA_MAPA),
-    "comercial":  ("Parceria Comercial", _FICHA_PARCERIA_COMERCIAL, COR_FICHA_COMERCIAL),
-    "dj":         ("Parceria DJ", _FICHA_PARCERIA_DJ, COR_FICHA_DJ),
-    "cla":        ("Parceria Clã/Comunidade", _FICHA_PARCERIA_CLA, COR_FICHA_CLA),
-    "comunidade": ("Parceria Clã/Comunidade", _FICHA_PARCERIA_CLA, COR_FICHA_CLA),
+# form_key -> {
+#   "titulo": str,
+#   "cor": int,
+#   "intro_launcher": str          (texto do cartão antes de clicar no botão)
+#   "encerramento": str            (mensagem final, mostrada só na ficha confirmada)
+#   "campos": [ {chave, label, estilo, max, obrigatorio, placeholder} ]
+# }
+FORM_TEMPLATES: dict[str, dict] = {
+
+    "novomembro_pt": {
+        "titulo": "Ficha — Novos Membros",
+        "cor": COR_FICHA_MEMBRO,
+        "intro_launcher": "clique no botão abaixo pra preencher sua ficha de entrada na GDS!! 🐉",
+        "encerramento": "🐉🔥 Prepare suas asas e venha fazer parte da nossa horda!\nSeja muito bem-vindo(a) à GDS! 🐲✨",
+        "campos": [
+            {"chave": "apelido", "label": "🐲 Apelido no servidor GDS", "estilo": "curto", "max": 32, "obrigatorio": True},
+            {"chave": "nome", "label": "👤 Nome", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "idade", "label": "🎂 Idade", "estilo": "curto", "max": 3, "obrigatorio": True},
+            {"chave": "roblox", "label": "🎮 Usuário Roblox", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "discord_user", "label": "💬 Usuário Discord", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "idioma", "label": "🌎 Idioma", "estilo": "curto", "max": 30, "obrigatorio": True},
+            {"chave": "comunidade_anterior", "label": "❓ Já foi de algum clã/comunidade?", "estilo": "curto", "max": 100, "obrigatorio": False, "placeholder": "Não / Sim, qual"},
+            {"chave": "indicacao", "label": "🤝 Alguém te recomendou? Quem?", "estilo": "curto", "max": 100, "obrigatorio": False, "placeholder": "Não / Sim, quem"},
+            {"chave": "motivo", "label": "🔥 Por que quer entrar na GDS?", "estilo": "longo", "max": 500, "obrigatorio": True},
+        ],
+    },
+
+    "novomembro_es": {
+        "titulo": "Ficha — Nuevos Miembros",
+        "cor": COR_FICHA_MEMBRO,
+        "intro_launcher": "¡haz clic en el botón de abajo para completar tu ficha de ingreso a GDS!! 🐉",
+        "encerramento": "🐉🔥 ¡Extiende tus alas y únete a nuestra horda de dragones!\n¡Bienvenido(a) a GDS! 🐲🔥",
+        "campos": [
+            {"chave": "apelido", "label": "🐲 Apodo en el servidor GDS", "estilo": "curto", "max": 32, "obrigatorio": True},
+            {"chave": "nome", "label": "👤 Nombre", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "idade", "label": "🎂 Edad", "estilo": "curto", "max": 3, "obrigatorio": True},
+            {"chave": "roblox", "label": "🎮 Usuario de Roblox", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "discord_user", "label": "💬 Usuario de Discord", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "idioma", "label": "🌎 Idioma", "estilo": "curto", "max": 30, "obrigatorio": True},
+            {"chave": "comunidade_anterior", "label": "❓ ¿Formaste parte de un clan?", "estilo": "curto", "max": 100, "obrigatorio": False, "placeholder": "No / Sí, ¿cuál?"},
+            {"chave": "indicacao", "label": "🤝 ¿Alguien te recomendó? ¿Quién?", "estilo": "curto", "max": 100, "obrigatorio": False, "placeholder": "No / Sí, quién"},
+            {"chave": "motivo", "label": "🔥 ¿Por qué quieres entrar a GDS?", "estilo": "longo", "max": 500, "obrigatorio": True},
+        ],
+    },
+
+    "novomembro_en": {
+        "titulo": "New Member Form",
+        "cor": COR_FICHA_MEMBRO,
+        "intro_launcher": "click the button below to fill out your GDS entry form!! 🐉",
+        "encerramento": "🐉🔥 Spread your wings and join our dragon horde!\nWelcome to GDS! 🐲🔥",
+        "campos": [
+            {"chave": "apelido", "label": "🐲 Server Nickname", "estilo": "curto", "max": 32, "obrigatorio": True},
+            {"chave": "nome", "label": "👤 Name", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "idade", "label": "🎂 Age", "estilo": "curto", "max": 3, "obrigatorio": True},
+            {"chave": "roblox", "label": "🎮 Roblox Username", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "discord_user", "label": "💬 Discord Username", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "idioma", "label": "🌎 Language", "estilo": "curto", "max": 30, "obrigatorio": True},
+            {"chave": "comunidade_anterior", "label": "❓ Were you part of a clan? Which?", "estilo": "curto", "max": 100, "obrigatorio": False, "placeholder": "No / Yes, which one"},
+            {"chave": "indicacao", "label": "🤝 Who recommended you, if anyone?", "estilo": "curto", "max": 100, "obrigatorio": False, "placeholder": "No one / Name"},
+            {"chave": "motivo", "label": "🔥 Why do you want to join GDS?", "estilo": "longo", "max": 500, "obrigatorio": True},
+        ],
+    },
+
+    "staff": {
+        "titulo": "Ficha — Candidatura a Staff",
+        "cor": COR_FICHA_STAFF,
+        "intro_launcher": "clique no botão abaixo pra se candidatar à Staff da GDS!! 🛡️",
+        "encerramento": "🔥🐲 Obrigado pelo interesse em fazer parte da Staff GDS!\nSua ficha será avaliada pela nossa equipe.",
+        "campos": [
+            {"chave": "nome", "label": "👤 Nome", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "apelido", "label": "🐲 Apelido no servidor", "estilo": "curto", "max": 32, "obrigatorio": True},
+            {"chave": "idade", "label": "🎂 Idade", "estilo": "curto", "max": 3, "obrigatorio": True},
+            {"chave": "discord_user", "label": "💬 Usuário Discord", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "roblox", "label": "🎮 Usuário Roblox", "estilo": "curto", "max": 40, "obrigatorio": True},
+            {"chave": "idioma", "label": "🌎 Idioma", "estilo": "curto", "max": 30, "obrigatorio": True},
+            {"chave": "qual_staff", "label": "🛡️ Qual Staff deseja entrar?", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "staff_anterior", "label": "📋 Já foi Staff? Onde?", "estilo": "curto", "max": 100, "obrigatorio": False, "placeholder": "Não / Sim, onde"},
+            {"chave": "disponibilidade", "label": "⏰ Disponibilidade", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "motivo", "label": "🤝 Por que quer ser Staff na GDS?", "estilo": "longo", "max": 500, "obrigatorio": True},
+            {"chave": "funcoes", "label": "⚔️ Quais funções sabe desempenhar?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "conflitos", "label": "🧠 Como lidaria com conflitos?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "porque_voce", "label": "🐉 Por que deveríamos escolher você?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "info_extra", "label": "📝 Informações adicionais", "estilo": "longo", "max": 300, "obrigatorio": False},
+        ],
+    },
+
+    "parceria_mapa": {
+        "titulo": "Parceria de Mapa",
+        "cor": COR_FICHA_MAPA,
+        "intro_launcher": "clique no botão abaixo pra propor sua parceria de mapa com a GDS!! 🎮",
+        "encerramento": "🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!\nSua proposta será analisada pela nossa equipe.",
+        "campos": [
+            {"chave": "nome_mapa", "label": "🎮 Nome do mapa", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "responsavel", "label": "👤 Responsável", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante1", "label": "👥 Representante 1", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante2", "label": "👥 Representante 2", "estilo": "curto", "max": 60, "obrigatorio": False},
+            {"chave": "discord_reps", "label": "💬 Discord dos representantes", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "link", "label": "🔗 Link do mapa", "estilo": "curto", "max": 200, "obrigatorio": True},
+            {"chave": "grupo", "label": "🏷️ Grupo/Comunidade", "estilo": "curto", "max": 100, "obrigatorio": False},
+            {"chave": "membros", "label": "👥 Quantidade de membros", "estilo": "curto", "max": 20, "obrigatorio": True},
+            {"chave": "divulgacao", "label": "📢 Onde será divulgado?", "estilo": "curto", "max": 150, "obrigatorio": True},
+            {"chave": "objetivo", "label": "🤝 O que busca com a parceria?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "oferece", "label": "🐉 O que o mapa oferece à GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "info_extra", "label": "📝 Informações adicionais", "estilo": "longo", "max": 300, "obrigatorio": False},
+        ],
+    },
+
+    "parceria_comercial": {
+        "titulo": "Parceria Comercial",
+        "cor": COR_FICHA_COMERCIAL,
+        "intro_launcher": "clique no botão abaixo pra propor sua parceria comercial com a GDS!! 💼",
+        "encerramento": "🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!\nSua proposta será analisada pela nossa equipe.",
+        "campos": [
+            {"chave": "nome_empresa", "label": "🏢 Nome da empresa/projeto", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "responsavel", "label": "👤 Responsável", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante1", "label": "👥 Representante 1", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante2", "label": "👥 Representante 2", "estilo": "curto", "max": 60, "obrigatorio": False},
+            {"chave": "discord_reps", "label": "💬 Discord dos representantes", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "link", "label": "🔗 Link", "estilo": "curto", "max": 200, "obrigatorio": False},
+            {"chave": "redes", "label": "📱 Redes sociais", "estilo": "curto", "max": 150, "obrigatorio": False},
+            {"chave": "area", "label": "💼 Área de atuação", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "divulgacao", "label": "📢 Onde será divulgado?", "estilo": "curto", "max": 150, "obrigatorio": True},
+            {"chave": "tipo_parceria", "label": "🤝 Tipo de parceria desejada", "estilo": "curto", "max": 150, "obrigatorio": True},
+            {"chave": "oferece", "label": "📦 O que oferece à GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "espera", "label": "🐉 O que espera da GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "info_extra", "label": "📝 Informações adicionais", "estilo": "longo", "max": 300, "obrigatorio": False},
+        ],
+    },
+
+    "parceria_dj": {
+        "titulo": "Parceria DJ",
+        "cor": COR_FICHA_DJ,
+        "intro_launcher": "clique no botão abaixo pra propor sua parceria de DJ com a GDS!! 🎧",
+        "encerramento": "🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!\nSua proposta será analisada pela nossa equipe.",
+        "campos": [
+            {"chave": "nome_artistico", "label": "🎧 Nome artístico", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "responsavel", "label": "👤 Responsável", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante1", "label": "👥 Representante 1", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante2", "label": "👥 Representante 2", "estilo": "curto", "max": 60, "obrigatorio": False},
+            {"chave": "discord_reps", "label": "💬 Discord dos representantes", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "estilo_musical", "label": "🎶 Estilo musical", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "perfil", "label": "🔗 Perfil/Canal", "estilo": "curto", "max": 200, "obrigatorio": False},
+            {"chave": "redes", "label": "📱 Redes sociais", "estilo": "curto", "max": 150, "obrigatorio": False},
+            {"chave": "onde_apresenta", "label": "🎤 Onde costuma se apresentar?", "estilo": "curto", "max": 150, "obrigatorio": True},
+            {"chave": "divulgacao", "label": "📢 Onde será divulgado?", "estilo": "curto", "max": 150, "obrigatorio": True},
+            {"chave": "objetivo", "label": "🤝 O que busca com a parceria?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "oferece", "label": "🐉 O que oferece à GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "espera", "label": "🔥 O que espera da GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "info_extra", "label": "📝 Informações adicionais", "estilo": "longo", "max": 300, "obrigatorio": False},
+        ],
+    },
+
+    "parceria_cla": {
+        "titulo": "Parceria de Clã",
+        "cor": COR_FICHA_CLA,
+        "intro_launcher": "clique no botão abaixo pra propor a parceria do seu clã com a GDS!! 🏷️",
+        "encerramento": "🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!\nSua proposta será analisada pela nossa equipe.",
+        "campos": [
+            {"chave": "nome_cla", "label": "🏷️ Nome do clã", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "dono", "label": "👑 Dono(a)/Líder", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante1", "label": "👥 Representante 1", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante2", "label": "👥 Representante 2", "estilo": "curto", "max": 60, "obrigatorio": False},
+            {"chave": "discord_reps", "label": "💬 Discord dos representantes", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "convite", "label": "🔗 Convite do servidor", "estilo": "curto", "max": 200, "obrigatorio": True},
+            {"chave": "membros", "label": "👥 Quantidade de membros", "estilo": "curto", "max": 20, "obrigatorio": True},
+            {"chave": "atividade", "label": "🎮 Atividade principal", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "divulgacao", "label": "📢 Onde será divulgado?", "estilo": "curto", "max": 150, "obrigatorio": True},
+            {"chave": "objetivo", "label": "🤝 O que busca com a parceria?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "oferece", "label": "🐉 O que seu clã oferece à GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "espera", "label": "🔥 O que espera da GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "info_extra", "label": "📝 Informações adicionais", "estilo": "longo", "max": 300, "obrigatorio": False},
+        ],
+    },
+
+    "parceria_comunidade": {
+        "titulo": "Parceria de Comunidade",
+        "cor": COR_FICHA_COMUNIDADE,
+        "intro_launcher": "clique no botão abaixo pra propor a parceria da sua comunidade com a GDS!! 🌐",
+        "encerramento": "🐲🔥 Obrigado pelo interesse em fazer parceria com a GDS!\nSerá um prazer conhecer sua comunidade e analisar a proposta.",
+        "campos": [
+            {"chave": "nome_comunidade", "label": "🏷️ Nome da comunidade", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "admin", "label": "👑 Administrador(a)/Fundador(a)", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante1", "label": "👥 Representante 1", "estilo": "curto", "max": 60, "obrigatorio": True},
+            {"chave": "representante2", "label": "👥 Representante 2", "estilo": "curto", "max": 60, "obrigatorio": False},
+            {"chave": "discord_reps", "label": "💬 Discord dos representantes", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "convite", "label": "🔗 Convite/Link da comunidade", "estilo": "curto", "max": 200, "obrigatorio": True},
+            {"chave": "membros", "label": "👥 Quantidade de membros", "estilo": "curto", "max": 20, "obrigatorio": True},
+            {"chave": "foco", "label": "🎯 Foco/atividade da comunidade", "estilo": "curto", "max": 100, "obrigatorio": True},
+            {"chave": "divulgacao", "label": "📢 Onde será divulgado?", "estilo": "curto", "max": 150, "obrigatorio": True},
+            {"chave": "objetivo", "label": "🤝 O que busca com a parceria?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "oferece", "label": "🐉 O que sua comunidade oferece à GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "espera", "label": "🔥 O que espera da GDS?", "estilo": "longo", "max": 400, "obrigatorio": True},
+            {"chave": "info_extra", "label": "📝 Informações adicionais", "estilo": "longo", "max": 300, "obrigatorio": False},
+        ],
+    },
 }
 
-# idioma -> (título, corpo)
-_IDIOMAS_NOVO_MEMBRO = {
-    "pt": ("Ficha — Novos Membros", _FICHA_NOVO_MEMBRO_PT),
-    "es": ("Ficha — Nuevos Miembros", _FICHA_NOVO_MEMBRO_ES),
-    "en": ("New Member Form", _FICHA_NOVO_MEMBRO_EN),
+# tipo (argumento de t!parceria) -> form_key. cla e comunidade agora
+# são fichas independentes, cada uma com seu próprio form_key acima.
+_TIPOS_PARCERIA_KEYS = {
+    "mapa": "parceria_mapa",
+    "comercial": "parceria_comercial",
+    "dj": "parceria_dj",
+    "cla": "parceria_cla",
+    "comunidade": "parceria_comunidade",
 }
 
 
@@ -1400,39 +1370,216 @@ def _normalizar(texto: str) -> str:
     )
 
 
+def _total_etapas(form_key: str) -> int:
+    """Quantos modais (etapas) essa ficha precisa, respeitando o limite de 5 campos por modal."""
+    total_campos = len(FORM_TEMPLATES[form_key]["campos"])
+    return (total_campos + 4) // 5
+
+
+def _campos_da_etapa(form_key: str, etapa: int) -> list[dict]:
+    campos = FORM_TEMPLATES[form_key]["campos"]
+    inicio = etapa * 5
+    return campos[inicio:inicio + 5]
+
+
+class FichaModalStep(discord.ui.Modal):
+    """Um modal com até 5 campos de uma ficha. Se sobrarem mais perguntas,
+    ao enviar este modal o próximo é aberto automaticamente (encadeado)."""
+
+    def __init__(self, cog: "FichasCog", form_key: str, etapa: int, respostas: dict):
+        template = FORM_TEMPLATES[form_key]
+        total = _total_etapas(form_key)
+        titulo = template["titulo"]
+        if total > 1:
+            titulo = f"{titulo} ({etapa + 1}/{total})"
+        super().__init__(title=titulo[:45])
+
+        self.cog = cog
+        self.form_key = form_key
+        self.etapa = etapa
+        self.total_etapas = total
+        self.respostas = dict(respostas)
+        self.campos = _campos_da_etapa(form_key, etapa)
+        self._inputs: dict[str, discord.ui.TextInput] = {}
+
+        for campo in self.campos:
+            valor_anterior = self.respostas.get(campo["chave"], "")
+            entrada = discord.ui.TextInput(
+                label=campo["label"][:45],
+                style=discord.TextStyle.paragraph if campo["estilo"] == "longo" else discord.TextStyle.short,
+                required=campo.get("obrigatorio", True),
+                max_length=campo.get("max", 300),
+                placeholder=campo.get("placeholder"),
+                default=valor_anterior or None,
+            )
+            self._inputs[campo["chave"]] = entrada
+            self.add_item(entrada)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        for campo in self.campos:
+            self.respostas[campo["chave"]] = self._inputs[campo["chave"]].value.strip()
+
+        proxima_etapa = self.etapa + 1
+        if proxima_etapa < self.total_etapas:
+            # ainda faltam perguntas: encadeia o próximo modal
+            await interaction.response.send_modal(
+                FichaModalStep(self.cog, self.form_key, proxima_etapa, self.respostas)
+            )
+            return
+
+        # acabaram as perguntas: mostra a prévia pra confirmar/editar
+        embed = self.cog._embed_preview(self.form_key, self.respostas)
+        view = ConfirmarFichaView(self.cog, self.form_key, self.respostas, interaction.user.id)
+        await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception):
+        mensagem = "❌ deu ruim ao processar sua ficha, tenta de novo!!"
+        if interaction.response.is_done():
+            await interaction.followup.send(mensagem, ephemeral=True)
+        else:
+            await interaction.response.send_message(mensagem, ephemeral=True)
+
+
+class ConfirmarFichaView(discord.ui.View):
+    """Prévia da ficha preenchida, com botões pra confirmar, editar ou cancelar."""
+
+    def __init__(self, cog: "FichasCog", form_key: str, respostas: dict, autor_id: int):
+        super().__init__(timeout=600)
+        self.cog = cog
+        self.form_key = form_key
+        self.respostas = respostas
+        self.autor_id = autor_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.autor_id:
+            await interaction.response.send_message("essa ficha não é sua!! 🚫", ephemeral=True)
+            return False
+        return True
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+    @discord.ui.button(label="Confirmar e Enviar", emoji="✅", style=discord.ButtonStyle.success)
+    async def confirmar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        embed_final = self.cog._embed_final(self.form_key, self.respostas, interaction.user)
+        await interaction.channel.send(embed=embed_final)
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(
+            content="✅ ficha enviada com sucesso, obrigado(a)!!", embed=None, view=self
+        )
+        self.stop()
+
+    @discord.ui.button(label="Editar", emoji="✏️", style=discord.ButtonStyle.secondary)
+    async def editar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # reabre a ficha do começo, com as respostas anteriores já preenchidas
+        await interaction.response.send_modal(
+            FichaModalStep(self.cog, self.form_key, 0, self.respostas)
+        )
+        self.stop()
+
+    @discord.ui.button(label="Cancelar", emoji="❌", style=discord.ButtonStyle.danger)
+    async def cancelar(self, interaction: discord.Interaction, button: discord.ui.Button):
+        for item in self.children:
+            item.disabled = True
+        await interaction.response.edit_message(content="❌ ficha cancelada.", embed=None, view=self)
+        self.stop()
+
+
+class IniciarFichaView(discord.ui.View):
+    """Cartão inicial com o botão que abre a primeira etapa do formulário."""
+
+    def __init__(self, cog: "FichasCog", form_key: str):
+        super().__init__(timeout=900)
+        self.cog = cog
+        self.form_key = form_key
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+    @discord.ui.button(label="Preencher Ficha", emoji="📝", style=discord.ButtonStyle.primary)
+    async def preencher(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(FichaModalStep(self.cog, self.form_key, 0, {}))
+
+
 class FichasCog(commands.Cog, name="Fichas"):
-    """Fichas de inscrição: novos membros, candidatura a Staff e parcerias."""
+    """Fichas de inscrição interativas: novos membros, candidatura a Staff e parcerias."""
 
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    def _embed_ficha(self, titulo: str, corpo: str, cor: int) -> discord.Embed:
+    # ── construção de embeds ────────────────────────────
+
+    def _embed_lancamento(self, form_key: str) -> discord.Embed:
+        template = FORM_TEMPLATES[form_key]
+        total = _total_etapas(form_key)
+        desc = template["intro_launcher"]
+        if total > 1:
+            desc += f"\n\n*a ficha tem {len(template['campos'])} perguntas, divididas em {total} etapas rápidas.*"
         embed = discord.Embed(
-            title=f"🐉 {titulo}", description=corpo, color=cor,
-            timestamp=datetime.now(timezone.utc)
+            title=f"🐉 {template['titulo']}",
+            description=desc,
+            color=template["cor"],
+            timestamp=datetime.now(timezone.utc),
         )
         embed.set_footer(text=FOOTER_GDS)
         return embed
 
+    def _montar_embed_respostas(self, form_key: str, respostas: dict, titulo_prefixo: str = None) -> discord.Embed:
+        template = FORM_TEMPLATES[form_key]
+        linhas = ["🔥 GODS OF DRAGON SOULS 🔥"]
+        for campo in template["campos"]:
+            valor = (respostas.get(campo["chave"]) or "").strip()
+            if not valor:
+                valor = "*não informado*"
+            linhas.append(f"{campo['label']}\n{valor}")
+        if template.get("encerramento"):
+            linhas.append(template["encerramento"])
+
+        titulo = template["titulo"]
+        if titulo_prefixo:
+            titulo = f"{titulo_prefixo} — {titulo}"
+
+        embed = discord.Embed(
+            title=f"🐉 {titulo}",
+            description="\n\n".join(linhas),
+            color=template["cor"],
+            timestamp=datetime.now(timezone.utc),
+        )
+        return embed
+
+    def _embed_preview(self, form_key: str, respostas: dict) -> discord.Embed:
+        embed = self._montar_embed_respostas(form_key, respostas, titulo_prefixo="🔎 Confira sua ficha")
+        embed.set_footer(text="revise as respostas!! confirme, edite ou cancele abaixo.")
+        return embed
+
+    def _embed_final(self, form_key: str, respostas: dict, autor: discord.abc.User) -> discord.Embed:
+        embed = self._montar_embed_respostas(form_key, respostas)
+        embed.set_footer(text=f"{FOOTER_GDS} • enviado por {autor.display_name}")
+        return embed
+
+    # ── comandos ─────────────────────────────────────────
+
     @commands.command(name="novomembro", aliases=["ficha", "newmember", "nuevomiembro"])
     async def novo_membro(self, ctx: commands.Context, idioma: str = "pt"):
-        """Envia a ficha de novos membros. Uso: t!novomembro [pt|es|en]"""
-        chave = _normalizar(idioma)
-        dados = _IDIOMAS_NOVO_MEMBRO.get(chave)
-        if not dados:
+        """Abre a ficha interativa de novos membros. Uso: t!novomembro [pt|es|en]"""
+        chave_idioma = _normalizar(idioma)
+        form_key = f"novomembro_{chave_idioma}"
+        if form_key not in FORM_TEMPLATES:
             await ctx.send(embed=embed_erro("idioma inválido!! use `pt`, `es` ou `en`!!"))
             return
-        titulo, corpo = dados
-        await ctx.send(embed=self._embed_ficha(titulo, corpo, COR_FICHA_MEMBRO))
+        await ctx.send(embed=self._embed_lancamento(form_key), view=IniciarFichaView(self, form_key))
 
     @commands.command(name="staff", aliases=["candidaturastaff", "recrutamento"])
     async def staff_form(self, ctx: commands.Context):
-        """Envia a ficha de candidatura a Staff. Uso: t!staff"""
-        await ctx.send(embed=self._embed_ficha("Ficha — Candidatura a Staff", _FICHA_STAFF, COR_FICHA_STAFF))
+        """Abre a ficha interativa de candidatura a Staff. Uso: t!staff"""
+        await ctx.send(embed=self._embed_lancamento("staff"), view=IniciarFichaView(self, "staff"))
 
     @commands.command(name="parceria", aliases=["parcerias"])
     async def parceria(self, ctx: commands.Context, tipo: str = None):
-        """Envia uma ficha de parceria. Uso: t!parceria <mapa|comercial|dj|cla>"""
+        """Abre a ficha interativa de parceria. Uso: t!parceria <mapa|comercial|dj|cla|comunidade>"""
         if tipo is None:
             embed = discord.Embed(
                 title="🤝 Parcerias GDS",
@@ -1441,7 +1588,8 @@ class FichasCog(commands.Cog, name="Fichas"):
                     "`t!parceria mapa` — parceria de mapa\n"
                     "`t!parceria comercial` — parceria comercial\n"
                     "`t!parceria dj` — parceria com DJ\n"
-                    "`t!parceria cla` — parceria de clã/comunidade"
+                    "`t!parceria cla` — parceria de clã\n"
+                    "`t!parceria comunidade` — parceria de comunidade"
                 ),
                 color=COR_ROXO_GRUPO, timestamp=datetime.now(timezone.utc)
             )
@@ -1450,12 +1598,11 @@ class FichasCog(commands.Cog, name="Fichas"):
             return
 
         chave = _normalizar(tipo)
-        dados = _TIPOS_PARCERIA.get(chave)
-        if not dados:
-            await ctx.send(embed=embed_erro("tipo de parceria inválido!! use `mapa`, `comercial`, `dj` ou `cla`!!"))
+        form_key = _TIPOS_PARCERIA_KEYS.get(chave)
+        if not form_key:
+            await ctx.send(embed=embed_erro("tipo de parceria inválido!! use `mapa`, `comercial`, `dj`, `cla` ou `comunidade`!!"))
             return
-        titulo, corpo, cor = dados
-        await ctx.send(embed=self._embed_ficha(titulo, corpo, cor))
+        await ctx.send(embed=self._embed_lancamento(form_key), view=IniciarFichaView(self, form_key))
 
     @commands.command(name="fichas")
     async def listar_fichas(self, ctx: commands.Context):
@@ -1463,12 +1610,15 @@ class FichasCog(commands.Cog, name="Fichas"):
         embed = discord.Embed(
             title="📋 Fichas Disponíveis",
             description=(
+                "todas as fichas abrem um formulário interativo: preencha, confira a prévia "
+                "e só então confirme o envio!!\n\n"
                 "`t!novomembro [pt|es|en]` — ficha de novos membros\n"
                 "`t!staff` — candidatura a Staff\n"
                 "`t!parceria mapa` — parceria de mapa\n"
                 "`t!parceria comercial` — parceria comercial\n"
                 "`t!parceria dj` — parceria com DJ\n"
-                "`t!parceria cla` — parceria de clã/comunidade"
+                "`t!parceria cla` — parceria de clã\n"
+                "`t!parceria comunidade` — parceria de comunidade"
             ),
             color=COR_NEUTRA, timestamp=datetime.now(timezone.utc)
         )
@@ -1531,8 +1681,9 @@ async def trisoul_help(ctx: commands.Context):
         value=(
             "`t!novomembro [pt|es|en]` — ficha de novos membros\n"
             "`t!staff` — candidatura a Staff\n"
-            "`t!parceria <mapa|comercial|dj|cla>` — fichas de parceria\n"
-            "`t!fichas` — lista todas as fichas disponíveis"
+            "`t!parceria <mapa|comercial|dj|cla|comunidade>` — fichas de parceria\n"
+            "`t!fichas` — lista todas as fichas disponíveis\n"
+            "*(formulário interativo: preenche, confere e confirma antes de enviar!!)*"
         )
     )
     embed.add_field(
