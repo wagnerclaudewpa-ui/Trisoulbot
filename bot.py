@@ -74,12 +74,20 @@ GRUPOS_DATA_FILE = "trisoul_grupos.json"
 _HEX_RE = re.compile(r'^#?[0-9A-Fa-f]{6}$')
 
 # ══════════════════════════════════════════════════════════════════
+#  ⚙️  CONFIGURAÇÕES — CARGO VINCULADO (auto-cargo ao ganhar outro)
+# ══════════════════════════════════════════════════════════════════
+
+CARGO_GATILHO_ID   = 1485791325537439765   # quando alguém recebe ESSE cargo...
+CARGO_VINCULADO_ID = 1536210475333976205   # ...o bot dá esse cargo junto, automaticamente
+
+# ══════════════════════════════════════════════════════════════════
 #  🤖  SETUP DO BOT
 # ══════════════════════════════════════════════════════════════════
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
+intents.members = True   # necessário pro on_member_update (cargo vinculado) disparar
 
 bot = commands.Bot(command_prefix=["t!", "T!", "trisoul ", "Trisoul "], intents=intents)
 bot.remove_command("help")
@@ -1126,6 +1134,49 @@ class GruposCog(commands.Cog, name="Grupos"):
 
 
 # ══════════════════════════════════════════════════════════════════
+#  🔗  MÓDULO DE CARGO VINCULADO — dá um 2º cargo automaticamente
+# ══════════════════════════════════════════════════════════════════
+#
+# Sempre que alguém recebe o cargo CARGO_GATILHO_ID (por qualquer meio:
+# staff dando manualmente, outro bot, integração etc.), o Trisoul detecta
+# essa mudança e adiciona também o cargo CARGO_VINCULADO_ID pra pessoa,
+# caso ela ainda não tenha.
+
+class CargoVinculadoCog(commands.Cog, name="CargoVinculado"):
+    """Dá um cargo extra automaticamente quando alguém recebe outro cargo específico."""
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before: discord.Member, after: discord.Member):
+        cargos_antes = {r.id for r in before.roles}
+        cargos_depois = {r.id for r in after.roles}
+        cargos_ganhos = cargos_depois - cargos_antes
+
+        if CARGO_GATILHO_ID not in cargos_ganhos:
+            return  # não foi o cargo-gatilho que acabou de ser adicionado
+
+        if CARGO_VINCULADO_ID in cargos_depois:
+            return  # já tem o cargo vinculado, nada a fazer
+
+        cargo_vinculado = after.guild.get_role(CARGO_VINCULADO_ID)
+        if cargo_vinculado is None:
+            print(f"⚠️ CargoVinculado: cargo {CARGO_VINCULADO_ID} não existe no servidor {after.guild.id}")
+            return
+
+        try:
+            await after.add_roles(
+                cargo_vinculado,
+                reason=f"Cargo vinculado automático (ganhou o cargo {CARGO_GATILHO_ID})",
+            )
+        except discord.Forbidden:
+            print(f"⚠️ CargoVinculado: sem permissão pra dar o cargo {CARGO_VINCULADO_ID} em {after.guild.id}")
+        except discord.HTTPException as e:
+            print(f"⚠️ CargoVinculado: erro ao adicionar cargo vinculado — {e}")
+
+
+# ══════════════════════════════════════════════════════════════════
 #  📋  MÓDULO DE FICHAS — formulário interativo (modal + confirmação)
 # ══════════════════════════════════════════════════════════════════
 #
@@ -1817,6 +1868,7 @@ async def _main():
     async with bot:
         await bot.add_cog(TrisoulCog(bot))
         await bot.add_cog(GruposCog(bot))
+        await bot.add_cog(CargoVinculadoCog(bot))
         await bot.add_cog(FichasCog(bot))
         if not TOKEN:
             print("❌ ERRO: token não encontrado! Crie um .env com TRISOUL_TOKEN=seu_token")
