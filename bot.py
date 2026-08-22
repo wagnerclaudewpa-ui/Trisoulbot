@@ -3,7 +3,7 @@
 ║              🐉  TRISOUL BOT  🔥🌑✨                              ║
 ║      O Filho dos Deuses Dragônicos — Três Consciências            ║
 ║        Ignis (Fogo) • Umbra (Sombra) • Luxor (Luz)                ║
-║                         v1.0 — Online                             ║
+║                         v1.1 — Online                             ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 Lore rápida:
@@ -22,6 +22,7 @@ Módulos:
   • Fé & Altar    — sistema de devoção/oração com placar
   • Invocação     — força uma cabeça específica a se manifestar
   • Profecia      — oráculo temático de cada cabeça
+  • Grupos        — painel com botão que cria cargo + chat + call pro usuário
 """
 
 import discord
@@ -30,6 +31,7 @@ import asyncio
 import os
 import json
 import random
+import re
 from datetime import datetime, timezone
 from collections import defaultdict, deque
 from dotenv import load_dotenv
@@ -50,6 +52,22 @@ CHANCE_GATILHO_SEM_CHAMADO = 0.25   # chance de responder a um gatilho sem ser c
 CHANCE_APARICAO_ESPONTANEA = 0.012  # chance de aparecer do nada por mensagem
 SILENCIO_MINIMO_APARICAO   = 90     # segundos de silêncio no canal antes de poder aparecer sozinho
 CHANCE_REACAO_EMOJI        = 0.35   # chance de reagir com emoji a palavra-chave
+
+# ══════════════════════════════════════════════════════════════════
+#  ⚙️  CONFIGURAÇÕES — MÓDULO DE GRUPOS (painel/ticket)
+# ══════════════════════════════════════════════════════════════════
+
+CANAL_PAINEL_ID    = 1540504012263264426   # canal onde o painel/ticket fica
+CARGO_PERMITIDO_ID = 1536210475333976205   # só quem tem esse cargo pode clicar
+CATEGORIA_ID       = 1536389533388513371   # categoria onde os canais do grupo entram
+
+IMAGEM_PAINEL = "https://cdn.discordapp.com/attachments/926913851172204577/1540507745126457426/ChatGPT_Image_21_de_ago._de_2026_20_42_44.png?ex=6a8a3523&is=6a88e3a3&hm=47da90dbe503f337ebc485dbb754d880377bde27a6d21e211d419590b34a53f8"
+
+COR_ROXO_GRUPO = 0x8E44AD
+
+GRUPOS_DATA_FILE = "trisoul_grupos.json"
+
+_HEX_RE = re.compile(r'^#?[0-9A-Fa-f]{6}$')
 
 # ══════════════════════════════════════════════════════════════════
 #  🤖  SETUP DO BOT
@@ -159,6 +177,21 @@ def _carregar_fe() -> dict:
 
 def _salvar_fe(data: dict):
     with open(FE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def _carregar_grupos() -> dict:
+    if os.path.exists(GRUPOS_DATA_FILE):
+        try:
+            with open(GRUPOS_DATA_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def _salvar_grupos(data: dict):
+    with open(GRUPOS_DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
@@ -716,8 +749,297 @@ class TrisoulCog(commands.Cog, name="Trisoul"):
             ),
             color=COR_NEUTRA, timestamp=datetime.now(timezone.utc)
         )
-        embed.set_footer(text="🐉 Trisoul Bot v1.0")
+        embed.set_footer(text="🐉 Trisoul Bot v1.1")
         await ctx.send(embed=embed)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  🛡️  MÓDULO DE GRUPOS — painel com botão, cria cargo + chat + call
+# ══════════════════════════════════════════════════════════════════
+
+class CriarGrupoModal(discord.ui.Modal, title="Criar Grupo"):
+    nome_grupo = discord.ui.TextInput(
+        label="Nome do grupo (resumido)",
+        placeholder="Ex.: Squad Duo",
+        max_length=50,
+    )
+    cor_cargo = discord.ui.TextInput(
+        label="Cor do cargo (hex)",
+        placeholder="Ex.: FF0000 ou #FF0000",
+        max_length=7,
+    )
+    nome_chat = discord.ui.TextInput(
+        label="Nome do chat (texto)",
+        placeholder="Ex.: chat-squad-duo",
+        max_length=50,
+    )
+    nome_call = discord.ui.TextInput(
+        label="Nome da call (voz)",
+        placeholder="Ex.: Call Squad Duo",
+        max_length=50,
+    )
+
+    def __init__(self, cog: "GruposCog"):
+        super().__init__()
+        self.cog = cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        guild = interaction.guild
+
+        cor_bruta = self.cor_cargo.value.strip()
+        if not _HEX_RE.match(cor_bruta):
+            await interaction.followup.send(
+                "❌ cor inválida!! use um hexadecimal tipo `FF0000` ou `#FF0000`.", ephemeral=True
+            )
+            return
+        cor_int = int(cor_bruta.lstrip("#"), 16)
+
+        categoria = guild.get_channel(CATEGORIA_ID)
+        if not isinstance(categoria, discord.CategoryChannel):
+            await interaction.followup.send(
+                "❌ não encontrei a categoria configurada, avisa um admin!!", ephemeral=True
+            )
+            return
+
+        try:
+            cargo = await guild.create_role(
+                name=self.nome_grupo.value.strip(),
+                colour=discord.Colour(cor_int),
+                mentionable=True,
+                reason=f"Grupo criado por {interaction.user} ({interaction.user.id})",
+            )
+        except discord.Forbidden:
+            await interaction.followup.send("❌ não tenho permissão pra criar cargos.", ephemeral=True)
+            return
+
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            cargo: discord.PermissionOverwrite(
+                view_channel=True, connect=True, speak=True,
+                send_messages=True, read_message_history=True,
+            ),
+        }
+        if guild.me:
+            overwrites[guild.me] = discord.PermissionOverwrite(view_channel=True, manage_channels=True)
+
+        try:
+            canal_texto = await guild.create_text_channel(
+                name=self.nome_chat.value.strip(),
+                category=categoria,
+                overwrites=overwrites,
+                reason=f"Grupo '{self.nome_grupo.value}' — dono: {interaction.user}",
+            )
+            canal_voz = await guild.create_voice_channel(
+                name=self.nome_call.value.strip(),
+                category=categoria,
+                overwrites=overwrites,
+                reason=f"Grupo '{self.nome_grupo.value}' — dono: {interaction.user}",
+            )
+        except discord.Forbidden:
+            await cargo.delete(reason="Falha ao criar canais, revertendo cargo")
+            await interaction.followup.send("❌ não tenho permissão pra criar canais.", ephemeral=True)
+            return
+
+        await interaction.user.add_roles(cargo, reason="Criador do grupo")
+
+        self.cog.data[str(cargo.id)] = {
+            "nome": self.nome_grupo.value.strip(),
+            "owner_id": interaction.user.id,
+            "canal_texto_id": canal_texto.id,
+            "canal_voz_id": canal_voz.id,
+        }
+        _salvar_grupos(self.cog.data)
+
+        embed = discord.Embed(
+            title="✅ Grupo criado!!",
+            description=(
+                f"**Grupo:** {self.nome_grupo.value.strip()}\n"
+                f"**Cargo:** {cargo.mention}\n"
+                f"**Chat:** {canal_texto.mention}\n"
+                f"**Call:** {canal_voz.mention}\n\n"
+                f"use `t!addmembro @pessoa` pra dar acesso a mais gente no seu grupo!!"
+            ),
+            color=COR_ROXO_GRUPO,
+        )
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
+
+class PainelGrupoView(discord.ui.View):
+    def __init__(self, cog: "GruposCog"):
+        super().__init__(timeout=None)
+        self.cog = cog
+
+    @discord.ui.button(
+        label="Criar Grupo", emoji="🛡️",
+        style=discord.ButtonStyle.primary, custom_id="grupos:criar_grupo",
+    )
+    async def criar_grupo(self, interaction: discord.Interaction, button: discord.ui.Button):
+        cargo_permitido = interaction.guild.get_role(CARGO_PERMITIDO_ID)
+        membro = interaction.user
+        if cargo_permitido is None or cargo_permitido not in membro.roles:
+            await interaction.response.send_message(
+                "🚫 você não tem permissão pra criar um grupo!!", ephemeral=True
+            )
+            return
+        await interaction.response.send_modal(CriarGrupoModal(self.cog))
+
+
+class GruposCog(commands.Cog, name="Grupos"):
+    """Painel de criação de grupos: cargo próprio + chat + call."""
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.data = _carregar_grupos()
+        self._painel_verificado = False
+        bot.add_view(PainelGrupoView(self))  # registra a view como persistente (sobrevive a restart)
+
+    def _grupos_do_dono(self, user_id: int):
+        return [rid for rid, info in self.data.items() if info["owner_id"] == user_id]
+
+    def _montar_embed_painel(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="🛡️ Criar Grupo",
+            description=(
+                "clique no botão abaixo pra criar seu próprio grupo!!\n\n"
+                "você vai poder escolher o nome, a cor do cargo, o nome do chat "
+                "e o nome da call — tudo criado na hora, só pra você e quem você adicionar."
+            ),
+            color=COR_ROXO_GRUPO,
+        )
+        embed.set_image(url=IMAGEM_PAINEL)
+        return embed
+
+    async def _enviar_painel(self, canal: discord.abc.Messageable):
+        await canal.send(embed=self._montar_embed_painel(), view=PainelGrupoView(self))
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        # roda só uma vez por sessão do bot
+        if self._painel_verificado:
+            return
+        self._painel_verificado = True
+
+        canal = self.bot.get_channel(CANAL_PAINEL_ID)
+        if canal is None:
+            return
+
+        # evita duplicar o painel toda vez que o bot reinicia:
+        # só posta se ainda não existir uma mensagem do painel lá
+        ja_existe = False
+        try:
+            async for msg in canal.history(limit=50):
+                if msg.author.id == self.bot.user.id and msg.embeds and msg.embeds[0].title == "🛡️ Criar Grupo":
+                    ja_existe = True
+                    break
+        except discord.Forbidden:
+            return
+
+        if not ja_existe:
+            await self._enviar_painel(canal)
+
+    @commands.command(name="painelgrupo")
+    @commands.has_permissions(administrator=True)
+    async def painel_grupo(self, ctx: commands.Context):
+        """Publica o painel de criação de grupos no canal configurado. Uso: t!painelgrupo"""
+        canal = ctx.guild.get_channel(CANAL_PAINEL_ID) or ctx.channel
+        await self._enviar_painel(canal)
+        if canal != ctx.channel:
+            await ctx.send(f"✅ painel publicado em {canal.mention}!!")
+
+    @commands.command(name="addmembro", aliases=["addmember"])
+    async def add_membro(self, ctx: commands.Context, membro: discord.Member, *, nome_grupo: str = None):
+        """Adiciona alguém ao seu grupo. Uso: t!addmembro @pessoa [nome do grupo]"""
+        grupos = self._grupos_do_dono(ctx.author.id)
+        if not grupos:
+            await ctx.send("você não é dono(a) de nenhum grupo!! 🚫")
+            return
+
+        if nome_grupo:
+            rid = next((r for r in grupos if self.data[r]["nome"].lower() == nome_grupo.lower()), None)
+            if not rid:
+                await ctx.send(f"não encontrei um grupo seu chamado **{nome_grupo}**!!")
+                return
+        elif len(grupos) == 1:
+            rid = grupos[0]
+        else:
+            nomes = ", ".join(f"**{self.data[r]['nome']}**" for r in grupos)
+            await ctx.send(f"você tem mais de um grupo!! especifique qual: {nomes}")
+            return
+
+        cargo = ctx.guild.get_role(int(rid))
+        if cargo is None:
+            await ctx.send("❌ o cargo desse grupo não existe mais.")
+            return
+
+        await membro.add_roles(cargo, reason=f"Adicionado por {ctx.author} ao grupo")
+        await ctx.send(f"✅ {membro.mention} agora faz parte do grupo **{self.data[rid]['nome']}**!!")
+
+    @commands.command(name="removermembro", aliases=["remmembro"])
+    async def rem_membro(self, ctx: commands.Context, membro: discord.Member, *, nome_grupo: str = None):
+        """Remove alguém do seu grupo. Uso: t!removermembro @pessoa [nome do grupo]"""
+        grupos = self._grupos_do_dono(ctx.author.id)
+        if not grupos:
+            await ctx.send("você não é dono(a) de nenhum grupo!! 🚫")
+            return
+
+        if nome_grupo:
+            rid = next((r for r in grupos if self.data[r]["nome"].lower() == nome_grupo.lower()), None)
+            if not rid:
+                await ctx.send(f"não encontrei um grupo seu chamado **{nome_grupo}**!!")
+                return
+        elif len(grupos) == 1:
+            rid = grupos[0]
+        else:
+            nomes = ", ".join(f"**{self.data[r]['nome']}**" for r in grupos)
+            await ctx.send(f"você tem mais de um grupo!! especifique qual: {nomes}")
+            return
+
+        cargo = ctx.guild.get_role(int(rid))
+        if cargo is None:
+            await ctx.send("❌ o cargo desse grupo não existe mais.")
+            return
+
+        await membro.remove_roles(cargo, reason=f"Removido por {ctx.author} do grupo")
+        await ctx.send(f"✅ {membro.mention} foi removido(a) do grupo **{self.data[rid]['nome']}**!!")
+
+    @commands.command(name="encerrargrupo", aliases=["deletargrupo"])
+    async def encerrar_grupo(self, ctx: commands.Context, *, nome_grupo: str = None):
+        """Encerra seu grupo: apaga o cargo e os canais. Uso: t!encerrargrupo [nome do grupo]"""
+        grupos = self._grupos_do_dono(ctx.author.id)
+        is_admin = ctx.author.guild_permissions.administrator
+        if not grupos and not is_admin:
+            await ctx.send("você não é dono(a) de nenhum grupo!! 🚫")
+            return
+
+        alvo_grupos = grupos if grupos else list(self.data.keys())
+        if nome_grupo:
+            rid = next((r for r in alvo_grupos if self.data[r]["nome"].lower() == nome_grupo.lower()), None)
+            if not rid:
+                await ctx.send(f"não encontrei o grupo **{nome_grupo}**!!")
+                return
+        elif len(alvo_grupos) == 1:
+            rid = alvo_grupos[0]
+        else:
+            nomes = ", ".join(f"**{self.data[r]['nome']}**" for r in alvo_grupos)
+            await ctx.send(f"especifique qual grupo encerrar: {nomes}")
+            return
+
+        info = self.data.pop(rid)
+        _salvar_grupos(self.data)
+
+        cargo = ctx.guild.get_role(int(rid))
+        canal_texto = ctx.guild.get_channel(info["canal_texto_id"])
+        canal_voz = ctx.guild.get_channel(info["canal_voz_id"])
+
+        for obj in (cargo, canal_texto, canal_voz):
+            if obj is not None:
+                try:
+                    await obj.delete(reason=f"Grupo encerrado por {ctx.author}")
+                except discord.Forbidden:
+                    pass
+
+        await ctx.send(f"🗑️ grupo **{info['nome']}** encerrado!! cargo e canais removidos.")
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -756,6 +1078,17 @@ async def trisoul_help(ctx: commands.Context):
             "`t!conflito` — as três cabeças discutem entre si (easter egg)\n"
             "`t!cabecas` — conhece as três consciências\n"
             "`t!trisoul` — lore e apresentação"
+        )
+    )
+    embed.add_field(
+        name="🛡️ Grupos",
+        inline=False,
+        value=(
+            "clique no botão do painel de grupos pra criar seu cargo + chat + call\n"
+            "`t!painelgrupo` — publica o painel (admin)\n"
+            "`t!addmembro @pessoa` — adiciona alguém no seu grupo\n"
+            "`t!removermembro @pessoa` — remove alguém do seu grupo\n"
+            "`t!encerrargrupo` — apaga seu grupo (cargo + canais)"
         )
     )
     embed.add_field(
@@ -842,6 +1175,7 @@ async def on_ready():
 async def _main():
     async with bot:
         await bot.add_cog(TrisoulCog(bot))
+        await bot.add_cog(GruposCog(bot))
         if not TOKEN:
             print("❌ ERRO: token não encontrado! Crie um .env com TRISOUL_TOKEN=seu_token")
             return
