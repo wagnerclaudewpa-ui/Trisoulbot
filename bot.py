@@ -387,6 +387,9 @@ class TrisoulCog(commands.Cog, name="Trisoul"):
         self._contexto: dict[int, deque] = defaultdict(lambda: deque(maxlen=10))
         self._ultimo_resp: dict[int, datetime] = {}
         self._presenca_iniciada = False
+        # guarda qual cabeça está "conversando" com cada pessoa em cada canal:
+        # chave = (channel_id, user_id) -> "ignis" | "umbra" | "luxor"
+        self._cabeca_ativa: dict[tuple[int, int], str] = {}
 
     # ── Helpers de diálogo ─────────────────────────────
 
@@ -415,6 +418,24 @@ class TrisoulCog(commands.Cog, name="Trisoul"):
             if chave in texto_lower:
                 return chave
         return None
+
+    def _cabeca_para_conversa(self, message: discord.Message, cabeca_citada: str | None) -> str:
+        """
+        Decide qual cabeça deve responder, respeitando a conversa em andamento:
+        a cabeça que começou a falar com a pessoa continua respondendo a ela,
+        e só troca se a pessoa citar o nome de outra cabeça.
+        """
+        chave = (message.channel.id, message.author.id)
+
+        if cabeca_citada:
+            self._cabeca_ativa[chave] = cabeca_citada
+            return cabeca_citada
+
+        cabeca = self._cabeca_ativa.get(chave)
+        if cabeca is None:
+            cabeca = escolher_cabeca()
+            self._cabeca_ativa[chave] = cabeca
+        return cabeca
 
     async def _reagir_emojis(self, message: discord.Message, texto_lower: str):
         if random.random() > CHANCE_REACAO_EMOJI:
@@ -467,7 +488,7 @@ class TrisoulCog(commands.Cog, name="Trisoul"):
 
         # 1) Gatilho ensinado/seed bateu
         if gatilho and (trisoul_chamado or random.random() < CHANCE_GATILHO_SEM_CHAMADO):
-            cabeca = cabeca_citada or escolher_cabeca()
+            cabeca = self._cabeca_para_conversa(message, cabeca_citada)
             resp = self._responder(gatilho, cabeca)
             if resp:
                 self._ultimo_resp[message.channel.id] = now
@@ -479,7 +500,7 @@ class TrisoulCog(commands.Cog, name="Trisoul"):
 
         # 2) Chamado genérico, sem gatilho específico
         if trisoul_chamado and not gatilho:
-            cabeca = cabeca_citada or escolher_cabeca()
+            cabeca = self._cabeca_para_conversa(message, cabeca_citada)
             linha = random.choice(_SAUDACOES[cabeca])
             self._ultimo_resp[message.channel.id] = now
             async with message.channel.typing():
